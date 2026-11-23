@@ -48,3 +48,11 @@ html, body { margin: 0; height: 100%; background: #000; color: var(--ink); overf
 .hud-misiones.abierto .mis.hecho { display: flex; }
 .hud-misiones:not(.abierto) .mis-head { display: none; }
 .hud-misiones .mis.ahora { font-weight: 600; color: #fff; }
+
+/* Aviso de objeto obtenido: arriba al centro, entra con fuerza y se va solo */
+.hud-obtenido { position: absolute; left: 50%; top: 13%; transform: translate(-50%, -12px); text-align: center;
+  padding: 8px 18px; background: rgba(0,0,0,.72); border-top: 2px solid #f2b705; border-bottom: 2px solid #f2b705;
+  opacity: 0; transition: opacity .2s, transform .25s cubic-bezier(.2,1.5,.4,1); pointer-events: none; }
+.hud-obtenido.on { opacity: 1; transform: translate(-50%, 0); }
+.hud-obtenido b { display: block; font-size: clamp(16px, 2.3vw, 26px); letter-spacing: .1em; text-transform: uppercase; color: #fff; }
+.hud-obtenido small { display: block; margin-top: 2px; font-size: clamp(11px, 1.3vw, 15px); color: #f2b705; }

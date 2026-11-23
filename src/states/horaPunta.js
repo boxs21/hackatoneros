@@ -20,8 +20,13 @@ import { setupVagon, walkVagon } from '../world/vagonEscena.js';
 // Textos provisorios (Renato los puede cambiar). Duración automática según largo.
 const INTRO = [
   '18:04. Sales de la pega. Solo quieres llegar a Casa.',
+  'Sacas el celular para avisarle a tu mamá… Oh. Sin batería.',
+  'Y en hora punta.',
   '[W] Abrirte paso · [Mouse] Mirar',
 ];
+// Orden en que los conoces. El Oficinista va al último: le pides su celular para
+// llamar a tu mamá y, justo después, viene la catástrofe.
+const ORDEN_CHARLA = ['Escolar', 'Señora', 'Vendedor', 'Oficinista'];
 const DIALOGOS = {
   // Recortado para que la intro dure ~80 s: lo que se queda adelanta lo que viene.
   Escolar: [
@@ -46,8 +51,8 @@ const RESPUESTAS = {
     ['No sé, pregúntale a otro.', 'ESCOLAR: Ah… ya. Sigo contando solo no más.'],
   ],
   Oficinista: [
-    ['¿Todo bien?', 'OFICINISTA: Sí, sí… es que si mañana no llego a la hora, me echan.'],
-    ['(No decir nada)', 'OFICINISTA: …Perdón. Hablo muy fuerte, ¿cierto?'],
+    ['Disculpe, ¿me presta el celular? Tengo que llamar a mi mamá.', 'OFICINISTA: Ya… pero rapidito, que ando con poca señal.'],
+    ['¿Todo bien? …¿Y me presta el celular? Es pa’ llamar a mi mamá.', 'OFICINISTA: Si mañana no llego a la hora, me echan… Tome, llame no más.'],
   ],
   Señora: [
     ['Yo le ayudo con el carro.', 'SEÑORA: Ay, gracias, mijo. Ya no queda gente así.'],
@@ -61,13 +66,14 @@ const RESPUESTAS = {
 // Ingrediente obligatorio: «Queda una pura». El Escolar venía contando las estaciones.
 // El altavoz no alcanza a terminar: a media frase se corta la voz y se va la luz.
 const FINAL = [
+  'Marcas el número de tu mamá. Suena una vez…',
   'ESCOLAR: ¡Queda una pura estación pa’ Casa!',
   'ALTAVOZ: Próxima estación… Ca… sa… —',
 ];
 // Misión en pantalla (lista de Valentín, src/ui/misiones.js): a quién ir ahora.
 const MISION = {
   Escolar: 'Acércate al escolar del gorro azul',
-  Oficinista: 'Acércate al oficinista que habla por teléfono',
+  Oficinista: 'Pídele el celular al oficinista para llamar a tu mamá',
   Señora: 'Acércate a la señora del carro de feria',
   Vendedor: 'Acércate al vendedor de chocolates',
 };
@@ -94,7 +100,15 @@ export default {
   autoAdvance: true,
   enter(ctx) {
     const scene = setupVagon(ctx, { z: 12.2, ambient: 1.1, lit: true });
-    const passengers = createPasajeros(ctx.stage);
+    // Los mismos cuatro, pero en el orden de la charla: el primero más cerca, el Oficinista al fondo.
+    const creados = createPasajeros(ctx.stage);
+    const lugares = creados.map((p) => ({ x: p.x, z: p.z })).sort((a, b) => b.z - a.z);
+    const passengers = ORDEN_CHARLA.map((n) => creados.find((p) => p.name === n)).filter(Boolean);
+    passengers.forEach((p, i) => {
+      p.x = lugares[i].x;
+      p.z = lugares[i].z;
+      p.root.position.set(p.x, 0, p.z);
+    });
     const crowd = createMultitud({
       colliders: scene.colliders,
       avoid: [
@@ -361,11 +375,12 @@ function entregar(ctx, pasajero) {
     onStart: () => { pasajero.armR.rotation.x = -1.25; },
   });
   S.queue.push({
-    text: `Recibiste: ${r.nombre.toLowerCase()} ${r.de} · ${r.uso}`,
-    ms: 2400,
+    text: '',
+    ms: 2200,
     onStart: () => {
       pasajero.armR.rotation.x = 0;
       dar(ctx, pasajero.name);
+      ctx.hud.obtenido(r.nombre, r.uso);
     },
     onEnd: () => nextBeat(ctx),
   });
@@ -397,9 +412,9 @@ function nextBeat(ctx) {
   // altavoz, parpadeo, alguien pregunta… y frenazo
   FINAL.forEach((text, i) => S.queue.push({
     text,
-    speaker: i === 0 ? S.passengers.find((p) => p.name === 'Escolar') : null,
-    // La campanilla y la voz del altavoz las pone el motor de audio al mostrar el subtítulo.
-    onStart: i === 1 ? () => {
+    speaker: i === 1 ? S.passengers.find((p) => p.name === 'Escolar') : null,
+    // 0: la llamada a tu mamá (suena una vez). 2: el altavoz que se corta.
+    onStart: i === 0 ? () => ctx.audio.sfx('celular') : i === 2 ? () => {
       // La campanilla la pone el motor de audio al mostrar el subtítulo del altavoz.
       // seguridad (DISENO.md): solo 2 bajones lentos, bien separados (< 3 destellos por segundo),
       // y caben antes del frenazo.
