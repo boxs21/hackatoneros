@@ -1,4 +1,4 @@
-# AGENTS.md — Fin de Servicio
+# AGENTS.md — Andén Cero
 
 Reglas para Codex (y para cualquier agente) en este repo. Léelas antes de cada tarea.
 

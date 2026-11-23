@@ -126,7 +126,7 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
     for (let py = TABLERO.y + 6; py < TABLERO.y + 27; py += 3) for (let px = TABLERO.x + 5; px < TABLERO.x + TABLERO.w - 5; px += 3) x.fillRect(px, py, 2, 2);
     const p = puntos.getContext('2d');
     p.shadowColor = AMBAR; p.shadowBlur = 3;
-    texto(p, 'FIN DE SERVICIO', TABLERO.x + 14, TABLERO.y + 6, 3, AMBAR, { led: true });
+    texto(p, 'ANDEN CERO', centro('ANDEN CERO', 3), TABLERO.y + 6, 3, AMBAR, { led: true });
     p.shadowBlur = 0;
     texto(p, 'LÍNEA 23 · ÚLTIMO TREN', centro('LÍNEA 23 · ÚLTIMO TREN', 1), TABLERO.y + 37, 1, AMBAR, { sombra: false });
   }

@@ -143,7 +143,7 @@ export default {
       S.volver = t + 16;
       ctx.audio.silencio();
       ctx.fader.cut();
-      ctx.hud.title('FIN DE SERVICIO', '¿Llegaste a Casa? · Gracias por jugar · Hecho con Codex · [Enter] volver al menú');
+      ctx.hud.title('ANDÉN CERO', 'Fin de servicio · ¿Llegaste a Casa? · Gracias por jugar · Hecho con Codex · [Enter] volver al menú');
     }
     if (S.fin) {
       if (ctx.input.pressed('Enter') || t >= S.volver) { S.volver = Infinity; ctx.go('inicio'); }

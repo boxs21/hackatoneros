@@ -107,7 +107,7 @@ export default {
       S.fin = true;
       ctx.audio.sfx('celular');
       ctx.fader.cut(); // el celular se apaga: negro seco
-      ctx.hud.title('FIN DE SERVICIO', 'Gracias por jugar · Hecho con Codex · [Enter] volver al menú');
+      ctx.hud.title('ANDÉN CERO', 'Fin de servicio · Gracias por jugar · Hecho con Codex · [Enter] volver al menú');
     }
     if (S.fin && (ctx.input.pressed('Enter') || S.t >= S.volver)) {
       S.volver = Infinity;
