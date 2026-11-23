@@ -18,14 +18,14 @@ import { textura, garabato } from '../world/texturas.js';
 import { setupVagon, walkVagon } from '../world/vagonEscena.js';
 import { createObjeto, createFigura, borradoGeometry } from '../world/figura.js';
 import { PASAJEROS } from '../world/pasajeros.js';
-import { createScare } from '../world/susto.js';
+import { createScare, caughtFrame } from '../world/susto.js';
 
 const GOAL = 3;
 // Por dificultad: 0 obvias, 1 medias, 2 sutiles o con flash.
 const POOL = [
   ['aviso', 'maletin', 'luces', 'puerta'],
-  ['mapa', 'manillas', 'espaldas', 'acecho'],
-  ['caras', 'tiza', 'avisoGrande', 'acecho'],
+  ['mapa', 'manillas', 'espaldas', 'acecho', 'sinCara'],
+  ['caras', 'tiza', 'avisoGrande', 'acecho', 'sinCara'],
 ];
 const NOMBRE = {
   aviso: 'los avisos decían otra cosa',
@@ -39,6 +39,7 @@ const NOMBRE = {
   caras: 'había caras en las ventanas (con flash)',
   tiza: 'decía DATE VUELTA en el piso (con flash)',
   avisoGrande: 'un aviso era más grande',
+  sinCara: 'había un pasajero sin cara mirando el celular',
 };
 
 let S = null;
@@ -74,6 +75,7 @@ export default {
 
     S = { scene, crowd, scare, anomaly, progress, loop, solved, wrongStreak, t: 0, decided: false, wrongT: -1,
       flashOnly: [], extraCrowds: [], stalker: null, started: false, lines: [], lineAt: 0 };
+    if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
     S.flash = createFlash({
       onFire(count) {
         ctx.audio.sfx('flash');
@@ -121,10 +123,8 @@ export default {
     // error: susto y de vuelta a cero
     if (S.wrongT >= 0) {
       S.wrongT += dt;
-      scare.update(dt, cam, S.wrongT);
-      scene.light(S.wrongT < .12 ? 1 : Math.max(0, .5 - S.wrongT), dt);
-      scene.overlay.u.uCaught.value = Math.min(1, S.wrongT * 4);
-      if (S.wrongT > .6 && !S.decided) {
+      const shown = caughtFrame(scene, scare, cam, dt, S.wrongT);
+      if (shown > .6 && !S.decided) {
         S.decided = true;
         ctx.go(this.id, { progress: 0, loop: S.loop + 1, solved: S.solved, wrongStreak: S.wrongStreak + 1, msg: S.failMsg });
       }
@@ -309,6 +309,23 @@ function applyAnomaly(ctx, S) {
       stage.add(stalker.mesh);
       S.extraCrowds.push(stalker);
       S.stalker = { crowd: stalker, p: stalker.people[0] };
+      break;
+    }
+    case 'sinCara': {
+      // Sentado, cabeza gacha, mirando un celular… y sin cara (el impostor).
+      const fig = createFigura({ ropa: 0x1e2a44, pantalon: 0x1e2a44, piel: '#c99672', pelo: '#17130f' });
+      fig.head.material = fig.head.material.slice();
+      fig.head.material[4] = fig.head.material[0]; // la cara queda lisa
+      fig.head.rotation.x = .55;
+      fig.armL.rotation.x = -1.1;
+      fig.armR.rotation.x = -1.1;
+      fig.root.position.set(1.98, -.38, -4.2);
+      fig.root.rotation.y = -Math.PI / 2;
+      const phone = new THREE.Mesh(new THREE.BoxGeometry(.07, .12, .01), basic({ color: 0x9fd0ff }));
+      phone.position.set(0, 1.08, .3);
+      phone.rotation.x = -.9;
+      fig.root.add(phone);
+      stage.add(fig.root);
       break;
     }
     default:

@@ -8,10 +8,17 @@ import * as THREE from 'three';
 import { createBorrados, CATCH_RADIUS } from '../mechanics/borrados.js';
 import { createFlash } from '../mechanics/flash.js';
 import { basic, pixelTexture } from '../world/ps1.js';
+
+// Mensajes de un número desconocido (¿el escolar?). Textos provisorios para Renato.
+const MENSAJES = [
+  'Número desconocido: Tío… ¿me esperó?',
+  'Número desconocido: Conté las estaciones. Esta no existe.',
+  'Número desconocido: Estoy detrás suyo.',
+];
 import { rayado, garabato, monito } from '../world/texturas.js';
 import { setupVagon, walkVagon } from '../world/vagonEscena.js';
-import { createObjeto } from '../world/figura.js';
-import { createScare } from '../world/susto.js';
+import { createObjeto, borradoGeometry } from '../world/figura.js';
+import { createScare, caughtFrame } from '../world/susto.js';
 import { VAGON } from '../world/vagon.js';
 
 const L = [0, Math.PI / 2, 0];
@@ -120,8 +127,23 @@ export default {
     S = { scene, crowd, scare, code, retry, decals, seen, pick, entered: '', t: 0, caught: -1, done: false,
       bestZ: 11.2, click: false, onDown, pad: { canvas, tex, panel, glow, hover: -1, state: '', stateT: 0 },
       ray: new THREE.Raycaster(), center: new THREE.Vector2(0, 0), frustum: new THREE.Frustum(), m: new THREE.Matrix4(),
-      intro: retry ? 99 : 0, lastLie: -99 };
+      intro: retry ? 99 : 0, lastLie: -99, msg: retry ? 3 : 0, msgAt: 9 };
+    if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
     drawKeypad(S);
+
+    // Lo que se acerca con cada pulso del tubo: silueta negra con ojos blancos.
+    // No te atrapa: es puro susto. Solo la primera vez (no en reintentos).
+    const lurker = new THREE.Group();
+    lurker.add(new THREE.Mesh(borradoGeometry(), basic({ color: 0x0b0b0e })));
+    const eyeMat = basic({ color: 0xffffff, transparent: true, fog: false });
+    for (const x of [-.05, .05]) {
+      const eye = new THREE.Mesh(new THREE.BoxGeometry(.04, .035, .01), eyeMat);
+      eye.position.set(x, 1.75, .16);
+      lurker.add(eye);
+    }
+    lurker.visible = false;
+    ctx.stage.add(lurker);
+    S.lurk = { group: lurker, eyeMat, dist: 8.5, state: retry ? 'done' : 'wait', lastOn: -9, prevOn: 0 };
     if (retry) ctx.hud.subtitle(`Cuaderno: ${notebook(S)}`, 3000);
 
     S.flash = createFlash({
@@ -148,10 +170,8 @@ export default {
 
     if (S.caught >= 0) {
       S.caught += dt;
-      scare.update(dt, cam, S.caught);
-      scene.light(S.caught < .12 ? 1 : Math.max(0, .5 - S.caught), dt);
-      scene.overlay.u.uCaught.value = Math.min(1, S.caught * 4);
-      if (S.caught > .55 && !S.done) {
+      const shown = caughtFrame(scene, scare, cam, dt, S.caught);
+      if (shown > .55 && !S.done) {
         S.done = true;
         ctx.restart({ retry: S.retry + 1, code: S.code, seen: S.seen, picks: S.pick });
       }
@@ -176,6 +196,8 @@ export default {
     const near = crowd.nearest(cam.position);
     scene.danger = THREE.MathUtils.clamp((1.6 - near) / 1.1, 0, 1);
     scene.light(level, dt, flash);
+    updateLurker(ctx, S);
+    updateMessages(ctx, S);
     crowd.show(level, glow);
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .75;
     const chalk = Math.max(level, glow * .75);
@@ -196,6 +218,7 @@ export default {
         }
       }
       if (found) {
+        if (S.msg === 1) S.msgAt = S.t + 3.5;
         ctx.audio.sfx('notificacion');
         ctx.hud.subtitle(`Cuaderno: ${notebook(S)}`, 3200);
         ctx.progress();
@@ -277,4 +300,60 @@ export default {
 
 function notebook(S) {
   return ['I', 'II', 'III'].map((n, i) => `${n}: ${S.seen[i] ? S.code[i] : '?'}`).join('   ');
+}
+
+// "Algo se acerca con el tubo": en cada pulso de luz aparece más cerca, frente a ti.
+// Seguridad: los pulsos los maneja el tubo (lentos); los ojos solo se apagan.
+const fwd = new THREE.Vector3();
+function updateLurker(ctx, S) {
+  const L = S.lurk;
+  const cam = ctx.camera;
+  const on = S.scene.tubeOn;
+  if (L.state === 'wait' && cam.position.z < 8.5) L.state = 'near';
+  if (on && !L.prevOn && L.state !== 'wait' && L.state !== 'done' && L.state !== 'gone') {
+    L.dist -= 1.8;
+    const final = L.dist < 1.4;
+    if (final) L.dist = .85;
+    cam.getWorldDirection(fwd);
+    fwd.y = 0;
+    fwd.normalize();
+    L.group.position.set(
+      THREE.MathUtils.clamp(cam.position.x + fwd.x * L.dist, -1.3, 1.3),
+      0,
+      THREE.MathUtils.clamp(cam.position.z + fwd.z * L.dist, -12.3, 12.3),
+    );
+    L.group.lookAt(cam.position.x, 0, cam.position.z);
+    ctx.audio.sfx(final ? 'susto' : 'crujido');
+    if (final) L.state = 'last';
+  }
+  if (on) L.lastOn = S.t;
+  // visible mientras el tubo está prendido; los ojos quedan 0,35 s y se apagan parejo
+  const eyes = Math.max(0, 1 - (S.t - L.lastOn) / .35);
+  L.group.visible = L.state !== 'wait' && L.state !== 'gone' && L.state !== 'done' && (on || eyes > 0);
+  L.group.children[0].visible = Boolean(on);
+  L.eyeMat.opacity = on ? 1 : eyes;
+  if (L.state === 'last' && !on && eyes <= 0) {
+    // se fue… y el tubo no vuelve a prender
+    L.state = 'gone';
+    S.scene.vagon.killTube();
+    if (S.msg === 2) S.msgAt = S.t + 2.5;
+  }
+  L.prevOn = on;
+}
+
+// Mensajes al celular de un número desconocido.
+function updateMessages(ctx, S) {
+  if (S.msg >= MENSAJES.length || S.t < S.msgAt || S.caught >= 0) return;
+  // el 2.º espera a que veas un número; el 3.º, al susto del tubo (o 50 s)
+  if (S.msg === 1 && !S.seen.some(Boolean) && S.t < 40) return;
+  if (S.msg === 2 && S.lurk.state !== 'gone' && S.t < 50) return;
+  ctx.hud.hint(MENSAJES[S.msg], 5200);
+  ctx.audio.sfx('notificacion');
+  if (S.msg === 2) {
+    // y es verdad: hay uno a tu espalda
+    S.crowd.spawnBehind(ctx.camera.position, ctx.camera.rotation.y, 1.1);
+    ctx.audio.sfx('crujido');
+  }
+  S.msg += 1;
+  S.msgAt = S.t + 6;
 }

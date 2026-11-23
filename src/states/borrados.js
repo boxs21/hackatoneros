@@ -8,7 +8,7 @@ import { createBorrados, CATCH_RADIUS } from '../mechanics/borrados.js';
 import { createFlash } from '../mechanics/flash.js';
 import { createPasajeros, desaparecer, updatePasajeros } from '../world/pasajeros.js';
 import { setupVagon, walkVagon } from '../world/vagonEscena.js';
-import { createScare } from '../world/susto.js';
+import { createScare, caughtFrame } from '../world/susto.js';
 import { VAGON } from '../world/vagon.js';
 
 const LINES = [
@@ -37,6 +37,7 @@ export default {
 
     S = { scene, passengers, crowd, scare, retry, vanished: 0, t: 0, bestZ: 11,
       caught: -1, done: false, doorMsg: -9, intro: retry ? 99 : 0, lastLie: -99, rule: null };
+    if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
 
     if (retry) {
       // punto de control: los cuatro ya desaparecieron
@@ -84,11 +85,9 @@ export default {
     // atrapado: susto corto y reinicio instantáneo
     if (S.caught >= 0) {
       S.caught += dt;
-      scare.update(dt, cam, S.caught);
-      scene.light(S.caught < .12 ? 1 : Math.max(0, .5 - S.caught), dt);
-      scene.overlay.u.uCaught.value = Math.min(1, S.caught * 4);
+      const shown = caughtFrame(scene, scare, cam, dt, S.caught);
       scene.overlay.u.uDanger.value = 1;
-      if (S.caught > .55 && !S.done) {
+      if (shown > .55 && !S.done) {
         S.done = true;
         ctx.restart({ retry: S.retry + 1 });
       }

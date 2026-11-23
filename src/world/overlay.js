@@ -10,6 +10,7 @@ export function createOverlay() {
     uCaught: { value: 0 },
     uDot: { value: 0 },
     uVig: { value: .75 },
+    uBlack: { value: 0 },
   };
   const material = new THREE.ShaderMaterial({
     uniforms,
@@ -20,7 +21,7 @@ export function createOverlay() {
       varying vec2 vUv;
       void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
     fragmentShader: /* glsl */ `
-      uniform float uTime, uFlash, uDanger, uCaught, uDot, uVig;
+      uniform float uTime, uFlash, uDanger, uCaught, uDot, uVig, uBlack;
       varying vec2 vUv;
       float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
       void over(inout vec3 c, inout float a, vec3 nc, float na) {
@@ -40,6 +41,7 @@ export function createOverlay() {
         over(c, a, vec3(0.45, 0.0, 0.02), uDanger * beat * smoothstep(0.12, 0.7, r));
         over(c, a, vec3(1.0, 0.98, 0.92), uFlash * (0.55 + 0.45 * (1.0 - r)));
         over(c, a, vec3(0.5, 0.0, 0.0), uCaught * 0.55);
+        over(c, a, vec3(0.0), uBlack);
         vec2 px = abs(gl_FragCoord.xy - vec2(160.0, 120.0));
         if (max(px.x, px.y) < 1.5) over(c, a, vec3(1.0), uDot * 0.9);
         gl_FragColor = vec4(a > 0.0 ? c / a : c, a);

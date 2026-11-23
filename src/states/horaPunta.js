@@ -99,6 +99,7 @@ export default {
       talking: false,
       lastComplain: -9, lastMurmur: 4, endAt: 0, ended: false, jolt: 0, flickerAt: [],
     };
+    if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
     S.flash = createFlash({
       onFire() {
         ctx.audio.sfx('flash', { multitud: false });
@@ -133,8 +134,6 @@ export default {
       }
       const k = S.t - S.jolt;
       cam.position.z -= dt * 1.4 * Math.max(0, 1 - k * 1.5);
-      if (k > .7 && k < .78) ctx.fader.cut();
-      if (k > .78 && k < .86) ctx.fader.clear(0);
       if (k > 1.05 && !S.ended) {
         S.ended = true;
         ctx.go(this.next, {}, { fade: false });
@@ -231,7 +230,7 @@ export default {
 };
 
 function say(ctx, text, ms = lineMs(text)) {
-  ctx.hud.subtitle(text, ms);
+  if (text) ctx.hud.subtitle(text, ms); // texto vacío = silencio (pausa dramática)
   S.lineEnd = S.t + ms / 1000;
 }
 
@@ -249,7 +248,7 @@ function runQueue(ctx) {
   }
   if (line.delay && S.t < line.delay) return;
   S.queue.shift();
-  say(ctx, line.text);
+  say(ctx, line.text, line.ms);
   S.speaker = line.speaker || null;
   line.onStart?.();
   if (line.onEnd) S.pendingEnd = line.onEnd;
@@ -272,14 +271,29 @@ function nextBeat(ctx) {
   S.beat += 1;
   S.talking = false;
   if (S.beat < S.passengers.length) return;
-  // los cuatro: altavoz, parpadeo, alguien pregunta… y frenazo
+  // los cuatro: silencio y TODOS TE MIRAN (inquietante, sin golpe)
+  S.queue.push({ text: '', ms: 1200 });
+  S.queue.push({
+    text: '',
+    ms: 3200,
+    onStart: () => {
+      S.crowd.stare(true);
+      ctx.audio.ambiente(null, { fade: .4 });
+    },
+    onEnd: () => {
+      S.crowd.stare(false);
+      ctx.audio.ambiente('vagon', { fade: .2 });
+    },
+  });
+  // altavoz, parpadeo, alguien pregunta… y frenazo
   FINAL.forEach((text, i) => S.queue.push({
     text,
     speaker: i === 0 ? S.passengers.find((p) => p.name === 'Escolar') : i === 2 ? S.passengers.find((p) => p.name === 'Señora') : null,
     onStart: i === 1 ? () => {
       ctx.audio.sfx('pitido');
       const t = S.t + 1.6;
-      S.flickerAt = [0, .08, .3, .36, .5, .56].map((d, k) => ({ t: t + d, off: k % 2 === 0 }));
+      // seguridad (DISENO.md): solo 2 bajones lentos, bien separados (< 3 destellos por segundo)
+      S.flickerAt = [0, .18, .9, 1.08].map((d, k) => ({ t: t + d, off: k % 2 === 0 }));
     } : null,
     onEnd: i === FINAL.length - 1 ? () => { S.endAt = S.t + .6; } : null,
   }));

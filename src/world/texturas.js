@@ -259,6 +259,22 @@ export function cara({ skin = '#c49a7c', hair = '#2a1d16', hairRows = 4, extra }
   }));
 }
 
+// Cara genérica para la multitud: en blanco y gris para que el color de piel
+// de cada persona (instanceColor) la tiña.
+export function caraMultitud() {
+  return pixelTexture(canvas('caraMultitud', 8, 8, (g) => {
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, 0, 8, 8);
+    g.fillStyle = '#2a2a2a';
+    g.fillRect(0, 0, 8, 2); // pelo
+    g.fillStyle = '#1a1a1a';
+    g.fillRect(2, 3, 1, 1);
+    g.fillRect(5, 3, 1, 1);
+    g.fillStyle = '#8a6a6a';
+    g.fillRect(3, 6, 2, 1);
+  }));
+}
+
 // Rayado de tiza del Escolar: un dígito grande y marcas de orden (I, II, III).
 export function rayado(digit, order) {
   const key = `rayado:${digit}:${order}`;

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { lambert, seeded } from '../world/ps1.js';
+import { caraMultitud } from '../world/texturas.js';
 
 // La multitud de la hora punta: gente de colores que se puede empujar.
 // Cada persona tiene un "lugar" y vuelve a él como un resorte. Si la empujas
@@ -70,7 +71,11 @@ export function createMultitud({ seed = 3, zFrom = 11.6, zTo = 1.2, avoid = [], 
 
   const n = people.length;
   const body = new THREE.InstancedMesh(bodyGeometry(), lambert({ color: 0xffffff }), n);
-  const head = new THREE.InstancedMesh(new THREE.BoxGeometry(.2, .24, .21).translate(0, 1.67, 0), lambert({ color: 0xffffff }), n);
+  // cabeza con cara al frente (+z), para que se note hacia dónde miran
+  const skinMat = lambert({ color: 0xffffff });
+  const faceMat = lambert({ color: 0xffffff, map: caraMultitud() });
+  const head = new THREE.InstancedMesh(new THREE.BoxGeometry(.2, .24, .21).translate(0, 1.67, 0),
+    [skinMat, skinMat, skinMat, skinMat, faceMat, skinMat], n);
   const hair = new THREE.InstancedMesh(new THREE.BoxGeometry(.21, .07, .22).translate(0, 1.8, -.005), lambert({ color: 0xffffff }), n);
   const c = new THREE.Color();
   people.forEach((p, i) => {
@@ -81,9 +86,10 @@ export function createMultitud({ seed = 3, zFrom = 11.6, zTo = 1.2, avoid = [], 
   for (const m of [body, head, hair]) m.frustumCulled = false;
 
   const o = new THREE.Object3D();
+  let staring = false; // todos miran al jugador, quietos (antes de place: se usa al crear)
   function place(time) {
     people.forEach((p, i) => {
-      const sway = Math.sin(time * 1.3 + p.phase) * .025;
+      const sway = staring ? 0 : Math.sin(time * 1.3 + p.phase) * .025;
       const y = p.seated ? -.36 : 0;
       o.position.set(p.x, y, p.z);
       o.rotation.set(0, p.yaw, sway + p.annoyed * .1);
@@ -105,6 +111,14 @@ export function createMultitud({ seed = 3, zFrom = 11.6, zTo = 1.2, avoid = [], 
     // Devuelve cuánta gente estás empujando (para frenar al jugador y quejarse).
     update(dt, player, facing) {
       time += dt;
+      if (staring) {
+        // todos giran la cabeza hacia ti (rápido, casi al mismo tiempo) y se quedan quietos
+        for (const p of people) {
+          const yaw = Math.atan2(player.x - p.x, player.z - p.z);
+          const diff = Math.atan2(Math.sin(yaw - p.yaw), Math.cos(yaw - p.yaw));
+          p.yaw += diff * Math.min(1, dt * (5 + p.phase % 3));
+        }
+      }
       let pushing = 0;
       let shoved = null;
       for (const p of people) {
@@ -148,6 +162,8 @@ export function createMultitud({ seed = 3, zFrom = 11.6, zTo = 1.2, avoid = [], 
       place(time);
       return { pushing, shoved };
     },
+    // "Todos te miran": on = true para empezar, false para soltar.
+    stare(on) { staring = on; },
     // mirar hacia algo (p. ej. al jugador que sacó una foto)
     lookAt(target, radius = 4) {
       for (const p of people) {
