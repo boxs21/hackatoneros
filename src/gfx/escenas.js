@@ -69,7 +69,12 @@ export function createEscenas(ctx) {
   }, true);
 
   // partir directo en una escena
-  const pedida = new URLSearchParams(location.search).get('escena');
+  let pedida = new URLSearchParams(location.search).get('escena');
+  try { // al cambiar de gráficos (G) se recarga y se vuelve a la misma escena
+    const guardada = sessionStorage.getItem('fds:escena');
+    sessionStorage.removeItem('fds:escena');
+    if (guardada && guardada !== 'inicio') pedida = guardada;
+  } catch (err) { console.error('[escenas] sesión', err); }
   if (pedida) {
     const id = ids.includes(pedida) ? pedida : ids[Number(pedida) - 1];
     if (id) setTimeout(() => ctx.go(id, {}, { fade: false }), 0);

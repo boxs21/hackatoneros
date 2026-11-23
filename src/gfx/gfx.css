@@ -1,4 +1,10 @@
 /* Modo pintura (rama de prueba). Solo aplica con body.gfx; el look PS1 no cambia. */
+@font-face { font-family: "Cormorant Garamond"; src: url("./cormorant.woff2") format("woff2");
+  font-weight: 300 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Cormorant Garamond"; src: url("./cormorant-italica.woff2") format("woff2");
+  font-weight: 300 700; font-style: italic; font-display: swap; }
+/* el menú se dibuja en 4:3: en pantalla ancha va centrado, sin estirarse */
+body.gfx .menu-lienzo { object-fit: contain; }
 body.gfx #screen { aspect-ratio: 16 / 9; width: min(100vw, calc(100vh * 16 / 9)); }
 body.gfx #game { image-rendering: auto; }
 

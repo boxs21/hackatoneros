@@ -29,7 +29,7 @@ const ORDEN = ['baja', 'media', 'alta'];
 const TRAZOS = {
   nitido: { nombre: 'nítido', cerca: 0, dof: 0, apertura: 0, blur: 0, bloom: .34, ca: .004 },
   mezcla: { nombre: 'mezcla', cerca: .42, dof: 1, apertura: .34, blur: 3.6, bloom: .38, ca: .007 },
-  oleo: { nombre: 'óleo', cerca: .85, dof: 1, apertura: .6, blur: 5.5, bloom: .42, ca: .012 },
+  oleo: { nombre: 'óleo', cerca: 1, dof: 1, apertura: .78, blur: 6.5, bloom: .44, ca: .012 },
 };
 
 // Un color dominante por momento (como los cuadros de una misma serie).
@@ -163,6 +163,7 @@ export function createGfx(ctx) {
   let abre = 0;
   let primeraVez = true; // la primera vez que se corta la luz, el cielo se abre lento
   let flashReciente = 0;
+  let exteriorAhora = false;
 
   // ---------- qué hay en escena ----------
   const refGeo = borradoGeometry();
@@ -215,7 +216,15 @@ export function createGfx(ctx) {
       if (antes === true && !o.visible) part.rafaga(o.getWorldPosition(v3));
       cuerpos.set(o, o.visible);
     }
-    if (o.isPointLight) luces.push(o);
+    if (o.isPointLight) {
+      luces.push(o);
+      // la luz que entra por las ventanas rotas: afuera ya no hay túnel, hay eclipse
+      if (exteriorAhora && o.color.getHex() !== 0xff3020 && o.userData.gfxHoyo !== false && (o.userData.gfxHoyo || o.color.getHex() === 0x9db8d8)) {
+        o.userData.gfxHoyo = true;
+        const c = mundo.u.uCorona.value;
+        o.color.setRGB(c.x, c.y, c.z);
+      }
+    }
     if (vistos.has(o)) return;
     vistos.add(o);
     if (o.isSpotLight) {
@@ -245,6 +254,17 @@ export function createGfx(ctx) {
     }
     const lista = Array.isArray(m) ? m : [m];
     if (!lista.some((x) => x.isMeshStandardMaterial)) return;
+    if (lista[0].alphaTest === .5 && lista[0].polygonOffset && !lista[0].userData.gfxHoyo) {
+      // ventana rota (world/muerte.js): el hoyo está pintado negro pensando en el túnel.
+      // Aquí lo negro se recorta, para que por el hoyo se vea lo que hay afuera.
+      lista[0].userData.gfxHoyo = true;
+      lista[0].onBeforeCompile = (sh) => {
+        sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>',
+          '#include <map_fragment>\n  if (max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b)) < 0.006) discard;');
+      };
+      lista[0].customProgramCacheKey = () => 'gfx-hoyo';
+      lista[0].needsUpdate = true;
+    }
     o.receiveShadow = true;
     o.castShadow = !lista[0].transparent;
     if (lista[0].transparent && gp?.width === .04 && lista[0].fog) {
@@ -350,10 +370,10 @@ export function createGfx(ctx) {
   function alternar() {
     GFX.modo = GFX.on ? 'ps1' : 'pintura';
     guardarGfx();
-    aplicar();
-    avisar(GFX.on ? 'Gráficos: pintura' : 'Gráficos: PS1');
-    // los materiales se crean al entrar a un momento: hay que rearmarlo
-    if (ctx.fsm.current && ctx.fsm.current !== 'inicio') ctx.restart();
+    // Los materiales se crean al armar cada momento, y los de los modelos 3D al
+    // cargar la página: lo limpio es recargar y volver a la misma escena.
+    try { sessionStorage.setItem('fds:escena', ctx.fsm.current || 'inicio'); } catch (err) { console.error('[gfx] sesión', err); }
+    location.reload();
   }
   function ciclarCalidad() {
     const lista = ['auto', ...ORDEN];
@@ -458,6 +478,7 @@ export function createGfx(ctx) {
 
     // el otro lado: a oscuras no hay túnel, hay mundo
     const exterior = enVagon && !encendido;
+    exteriorAhora = exterior;
     for (const t of tunel) t.visible = !exterior;
     if (exterior) {
       abre = Math.min(1, abre + dt / (primeraVez ? 5 : .7));

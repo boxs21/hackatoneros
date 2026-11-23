@@ -6,12 +6,17 @@ import { borradoGeometry } from '../world/figura.js';
 //  - cielo pintado: nubes en remolino, cortinas de pintura que caen del cenit
 //  - el eclipse: disco negro con corona (es la fuente de los rayos de luz)
 //  - el mar: espejo del cielo, con bruma en el horizonte
-//  - la ciudad colgando: torres al revés, con ventanas encendidas
-//  - los colosos: siluetas enormes en la bruma, mirando hacia el tren
+//  - las agujas: una ciudad que cuelga del cielo, en silueta, con luces
+//  - los colosos: siluetas enormes y lejanas, de pie en el mar, mirando al tren
+//  - los faros: columnas de luz que suben del mar
+//  - la carrocería: tapa negra por fuera del vagón, para que el cielo solo
+//    entre por las ventanas (sin el túnel, las rendijas del techo brillaban)
 //  - la vía: sigue de largo y sube en curva hacia el eclipse
 //  - pétalos en el viento
 // Nada de esto ilumina el interior: adentro sigue oscuro.
-export const SOL = new THREE.Vector3(-.82, .2, -.45).normalize();
+// adelante y a la izquierda (30°): desde donde partes cae en una ventana, no detrás
+// de una puerta, y se va viendo por las siguientes al caminar por el pasillo
+export const SOL = new THREE.Vector3(-.49, .2, -.85).normalize();
 
 const RUIDO = /* glsl */ `
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -90,6 +95,15 @@ vec3 cielo(vec3 d) {
     cerro += uCorona * cerca * 0.35 * smoothstep(alto - 0.03, alto, d.y); // el filo que mira al eclipse
     col = mix(col, cerro, m);
   }
+
+  // faros: columnas finas de luz que suben del mar, al lado contrario del eclipse
+  for (int k = 0; k < 4; k++) {
+    float fk = float(k);
+    float t = 0.16 + fk * 0.33;
+    float da = 1.0 - dot(cir, vec2(cos(t), -sin(t)));
+    float pulso = 0.8 + 0.2 * sin(uTime * 0.8 + fk * 2.1);
+    col += uCorona * (exp(-da * 30000.0) * 1.7 + exp(-da * 900.0) * 0.14) * exp(-h * (4.0 + fk * 1.5)) * pulso;
+  }
   return col;
 }
 void main() {
@@ -115,8 +129,9 @@ void main() {
 // niebla del aire: lo lejano se funde con el color del horizonte
 const AIRE = /* glsl */ `
 vec3 aire(vec3 col, vec3 w) {
-  float f = 1.0 - exp(-length(w - cameraPosition) * 0.007);
-  vec3 lejos = mix(uHoriz, uMedio, smoothstep(-5.0, 45.0, w.y));
+  float f = 1.0 - exp(-length(w - cameraPosition) * 0.006);
+  // lo lejano toma el tono del horizonte pero queda más oscuro que el cielo: silueta
+  vec3 lejos = mix(uHoriz, uMedio, smoothstep(-5.0, 45.0, w.y)) * 0.32;
   return mix(col, lejos, f) * uAbre * uAbre;
 }`;
 
@@ -140,20 +155,20 @@ varying float vSeed;
 ${RUIDO}
 ${AIRE}
 void main() {
-  vec3 col = uCenit * 0.35 + uMedio * 0.06;
-  if (abs(vNl.y) < 0.5) {
-    // ventanas: una grilla por cara, algunas encendidas
-    float u = abs(vNl.x) > abs(vNl.z) ? vL.z : vL.x;
-    vec2 g = vec2(u * 0.85, vL.y * 0.55);
+  vec3 col = uCenit * 0.18;
+  col += uCorona * pow(max(dot(normalize(vNl), uSol), 0.0), 2.0) * 0.16; // el lado que mira al eclipse
+  if (abs(vNl.y) < 0.8) {
+    // luces: una grilla alrededor de la aguja, algunas encendidas
+    vec2 g = vec2(atan(vL.z, vL.x) * 3.2, vL.y * 0.4);
     vec2 c = floor(g), f = fract(g);
     float on = step(0.8, hash(c + vSeed * 91.0));
     float parpadeo = 0.75 + 0.25 * sin(uTime * (0.4 + hash(c) * 1.3) + hash(c + 5.0) * 30.0);
     float marco = step(0.22, f.x) * step(f.x, 0.78) * step(0.2, f.y) * step(f.y, 0.7);
-    col += vec3(1.0, 0.7, 0.36) * on * marco * parpadeo * 1.8;
+    col += vec3(1.0, 0.7, 0.36) * on * marco * parpadeo * 1.5;
   }
   col = aire(col, vW);
   // la base (arriba) se pierde entre las nubes
-  col = mix(col, uMedio * 0.55 * uAbre * uAbre, smoothstep(46.0, 74.0, vW.y));
+  col = mix(col, mix(uMedio, uCenit, 0.55) * 0.7 * uAbre * uAbre, smoothstep(58.0, 86.0, vW.y));
   gl_FragColor = vec4(col, 1.0);
 }`;
 
@@ -178,13 +193,13 @@ ${AIRE}
 void main() {
   vec3 N = normalize(vN);
   vec3 V = normalize(cameraPosition - vW);
-  vec3 col = uCenit * 0.1;
+  vec3 col = uCenit * 0.06;
   // canto de luz: el eclipse los recorta por un lado
   col += uCorona * pow(max(dot(N, uSol), 0.0), 1.5) * 0.5;
   col += uHoriz * pow(1.0 - abs(dot(N, V)), 3.0) * 0.35;
   col = aire(col, vW);
   // los pies se deshacen en la bruma del mar
-  col = mix(col, uHoriz * 1.1 * uAbre * uAbre, smoothstep(14.0, -6.0, vW.y));
+  col = mix(col, uHoriz * 0.75 * uAbre * uAbre, smoothstep(7.0, -7.0, vW.y));
   gl_FragColor = vec4(col, 1.0);
 }`;
 
@@ -235,11 +250,11 @@ void main() {
   float afuera = step(2.75, abs(p.x)); // nunca dentro del vagón
   vec3 carmin = vec3(0.85, 0.06, 0.1), marfil = vec3(1.0, 0.86, 0.8);
   vec3 dir = normalize(p - cameraPosition);
-  float luz = 0.22 + 1.5 * pow(max(dot(dir, uSol), 0.0), 3.0);
+  float luz = 0.85 + 1.6 * pow(max(dot(dir, uSol), 0.0), 3.0); // con color propio: a contraluz parecían escombros
   vC = (aSeed.x < 0.6 ? carmin : marfil) * luz * uAbre * afuera * (1.0 - smoothstep(18.0, 26.0, dist));
   vC += uCorona * 0.25 * luz * uAbre * afuera * step(0.9, aSeed.y);
   vGiro = uTime * (1.0 + aSeed.y * 3.0) + aSeed.z * 6.28;
-  gl_PointSize = clamp(uPx * 0.11 * (0.5 + aSeed.z) / dist, 1.5, 26.0);
+  gl_PointSize = clamp(uPx * 0.085 * (0.5 + aSeed.z) / dist, 1.5, 18.0);
   gl_Position = projectionMatrix * mv;
 }`;
 
@@ -277,36 +292,41 @@ export function createMundo() {
   domo.renderOrder = 10; // al final de lo opaco: solo pinta donde se ve el cielo
 
   // la ciudad colgando
-  const N_TORRES = 76;
-  const torres = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1).translate(0, -.5, 0),
+  // agujas colgantes: anchas arriba, en punta hacia abajo. Lejos y nunca delante del eclipse.
+  const N_TORRES = 46;
+  const torres = new THREE.InstancedMesh(new THREE.CylinderGeometry(.5, .05, 1, 5, 1).translate(0, -.5, 0),
     new THREE.ShaderMaterial({ uniforms: u, vertexShader: TORRE_V, fragmentShader: TORRE_F }), N_TORRES);
   const o = new THREE.Object3D();
+  const azSol = Math.atan2(SOL.z, SOL.x);
   for (let i = 0; i < N_TORRES; i++) {
-    const a = rnd() * Math.PI * 2;
-    const r = 42 + rnd() * 100;
-    const ancho = 4 + rnd() * 7;
-    o.position.set(Math.cos(a) * r, 78, Math.sin(a) * r);
+    let a = rnd() * Math.PI * 2;
+    while (Math.abs(Math.atan2(Math.sin(a - azSol), Math.cos(a - azSol))) < .62) a = rnd() * Math.PI * 2;
+    const r = 82 + rnd() * 68;
+    const ancho = 7 + rnd() * 9;
+    o.position.set(Math.cos(a) * r, 88, Math.sin(a) * r);
     o.rotation.set(0, rnd() * Math.PI, 0);
-    o.scale.set(ancho, 22 + rnd() * 48 - r * .08, ancho * (.7 + rnd() * .6));
+    o.scale.set(ancho, 30 + rnd() * 40, ancho * (.8 + rnd() * .4));
     o.updateMatrix();
     torres.setMatrixAt(i, o.matrix);
   }
   torres.frustumCulled = false;
 
   // los colosos
-  const N_COLOSOS = 7;
+  const N_COLOSOS = 5;
+  // lejos y de cuerpo entero: la cintura a ras del mar, la cabeza bajo el borde de la ventana
+  const DONDE = [-.95, -.4, .2, .78, Math.PI - .75];
   const colosos = new THREE.InstancedMesh(borradoGeometry(),
     new THREE.ShaderMaterial({ uniforms: u, vertexShader: COLOSO_V, fragmentShader: COLOSO_F }), N_COLOSOS);
   for (let i = 0; i < N_COLOSOS; i++) {
     // repartidos a los lados del tren (por las ventanas se mira hacia ±x)
-    const lado = i % 2 ? 1 : -1;
-    const a = (lado > 0 ? 0 : Math.PI) + (rnd() - .5) * 1.9;
-    const r = 66 + rnd() * 44;
+    const a = DONDE[i] + (rnd() - .5) * .12;
+    const r = 132 + rnd() * 26;
     const x = Math.cos(a) * r;
     const z = Math.sin(a) * r;
-    o.position.set(x, -24 - rnd() * 8, z);
-    o.rotation.set(0, Math.atan2(-x, -z), (rnd() - .5) * .08);
-    o.scale.setScalar(30 + rnd() * 16);
+    const escala = 31 + rnd() * 8;
+    o.position.set(x, -.42 * 1.88 * escala, z);
+    o.rotation.set(0, Math.atan2(-x, -z), (rnd() - .5) * .06);
+    o.scale.setScalar(escala);
     o.updateMatrix();
     colosos.setMatrixAt(i, o.matrix);
   }
@@ -314,9 +334,9 @@ export function createMundo() {
 
   // la vía que sube hacia el eclipse
   const curva = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0, -1, -13.5), new THREE.Vector3(0, -1, -30), new THREE.Vector3(-8, 1, -54),
-    new THREE.Vector3(-30, 8, -74), new THREE.Vector3(-62, 20, -80), new THREE.Vector3(-98, 34, -70),
-    new THREE.Vector3(-150, 52, -62),
+    new THREE.Vector3(0, -1, -13.5), new THREE.Vector3(0, -1, -34), new THREE.Vector3(-4, 1, -62),
+    new THREE.Vector3(-14, 6, -90), new THREE.Vector3(-32, 14, -114), new THREE.Vector3(-56, 24, -134),
+    new THREE.Vector3(-84, 34, -148),
   ]);
   const SEG = 260;
   const pos = new Float32Array((SEG + 1) * 6);
@@ -364,6 +384,21 @@ export function createMundo() {
     uniforms: hojaU, vertexShader: HOJA_V, fragmentShader: HOJA_F,
   }));
   hojas.frustumCulled = false;
+
+  // carrocería: lo que antes tapaba el túnel. Negro puro, pegado por fuera.
+  const negro = new THREE.MeshBasicMaterial({ color: 0x000000, fog: false });
+  const tapa = (w, h, d, x, y, z) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), negro);
+    m.position.set(x, y, z);
+    group.add(m);
+  };
+  for (const s of [-1, 1]) {
+    tapa(.1, 1.2, 26.6, s * 2.63, 3.04, 0); // sobre las ventanas, hasta el techo
+    for (const dz of [-8, 0, 8]) tapa(.1, .34, 1.7, s * 2.63, 2.31, dz); // sobre cada puerta
+    tapa(5.5, 3.9, .1, 0, 1.7, s * 13.14); // extremos
+  }
+  tapa(5.5, .1, 26.6, 0, 3.4, 0); // techo
+  tapa(5.5, .1, 26.6, 0, -.2, 0); // bajo el piso
 
   group.add(domo, torres, colosos, via, hojas);
   return { group, u, hojaU };

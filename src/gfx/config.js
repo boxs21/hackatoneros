@@ -7,10 +7,10 @@
 const params = new URLSearchParams(location.search);
 const KEY = 'fds:gfx';
 
-function leer(nombre, validos, porDefecto) {
+function leer(nombre, validos, porDefecto, clave = nombre) {
   let v = params.get(nombre);
   if (!v) {
-    try { v = localStorage.getItem(`${KEY}:${nombre}`); } catch (err) { console.error('[gfx] config', err); }
+    try { v = localStorage.getItem(`${KEY}:${clave}`); } catch (err) { console.error('[gfx] config', err); }
   }
   return validos.includes(v) ? v : porDefecto;
 }
@@ -18,7 +18,7 @@ function leer(nombre, validos, porDefecto) {
 export const GFX = {
   modo: leer('gfx', ['pintura', 'ps1'], 'pintura'),
   calidad: leer('calidad', ['auto', 'baja', 'media', 'alta'], 'auto'),
-  trazo: leer('trazo', ['nitido', 'mezcla', 'oleo'], 'mezcla'),
+  trazo: leer('trazo', ['nitido', 'mezcla', 'oleo'], 'oleo', 'trazo2'), // por defecto borroso, como cuadro
   get on() { return this.modo === 'pintura'; },
   // menos movimiento de pantalla para quien lo pide en su sistema
   calma: matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
@@ -28,6 +28,6 @@ export function guardarGfx() {
   try {
     localStorage.setItem(`${KEY}:gfx`, GFX.modo);
     localStorage.setItem(`${KEY}:calidad`, GFX.calidad);
-    localStorage.setItem(`${KEY}:trazo`, GFX.trazo);
+    localStorage.setItem(`${KEY}:trazo2`, GFX.trazo);
   } catch (err) { console.error('[gfx] config', err); }
 }
