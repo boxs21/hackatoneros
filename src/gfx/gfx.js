@@ -11,6 +11,8 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GFX, guardarGfx } from './config.js';
 import * as SH from './shaders.js';
 import { createParticulas } from './particulas.js';
+import { createHaces } from './haces.js';
+import { createDisolucion, parcharBorrado as parcheBorrado } from './disolucion.js';
 import { createMundo, SOL } from './mundo.js';
 import { createEscenas } from './escenas.js';
 import { borradoGeometry } from '../world/figura.js';
@@ -150,6 +152,9 @@ export function createGfx(ctx) {
   const part = createParticulas();
   part.group.visible = false;
   scene.add(part.group);
+  // haces del eclipse por las ventanas y gente que se deshace
+  const haces = createHaces(); // se dibujan aparte (ver "haces" en render)
+  const disol = createDisolucion();
 
   let ms = 16; // milisegundos por frame (promedio)
   let reloj = 0;
@@ -194,27 +199,47 @@ export function createGfx(ctx) {
     overlayU = m.uniforms;
   }
   function parcharBorrado(m) {
-    // canto dorado a contraluz: solo existe mientras hay flash o imagen retenida
-    m.onBeforeCompile = (sh) => {
-      sh.uniforms.uRim = rim;
-      sh.fragmentShader = sh.fragmentShader
-        .replace('void main() {', 'uniform float uRim;\nvoid main() {')
-        .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-          {
-            float fr = pow(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), 2.4);
-            totalEmissiveRadiance += vec3(1.0, 0.78, 0.46) * fr * uRim;
-          }`);
-    };
-    m.customProgramCacheKey = () => 'gfx-borrado';
-    m.needsUpdate = true;
+    // gente a medio borrar: tinta, pedazos que faltan y canto encendido (disolucion.js)
+    parcheBorrado(m, rim);
   }
+
+  // ventanas rotas y quién salió por ellas
+  const hoyosVis = new Map(); // malla del hoyo -> visible en el frame anterior
+  const hoyosLista = [0, 1, 2, 3].map(() => ({ x: 0, y: 0, z: 0, s: 1, acc: 0, edad: 0 }));
+  let nHoyos = 0;
+  const roturas = []; // hoyos que se abrieron en este frame
+  const deshechos = new WeakSet(); // cuerpos que ya se fueron en pétalos
+  let killer = null;
+  let killerVis = false;
+  const caja = new THREE.Box3();
+  const esPersona = (o) => o.children[0].geometry?.parameters?.height === .82 && o.children[0].geometry.parameters.width === .13;
 
   function mirar(o) {
     // alguien desapareció: su cuerpo (un grupo de piezas) dejó de verse
     if (o.isGroup && o.children.length >= 5 && o.children[0].isMesh) {
       const antes = cuerpos.get(o);
-      if (antes === true && !o.visible) part.rafaga(o.getWorldPosition(v3));
+      if (antes === undefined && esPersona(o)) disol.preparar(o);
+      if (antes === true && !o.visible && !deshechos.has(o)) part.rafaga(o.getWorldPosition(v3));
       cuerpos.set(o, o.visible);
+    }
+    // el hoyo de una ventana rota: cuándo se abre y dónde quedó
+    if (o.isMesh && o.geometry?.parameters?.width === 1.7 && o.material?.userData?.gfxHoyo) {
+      const antes = hoyosVis.get(o);
+      if (o.visible) {
+        o.getWorldPosition(v3);
+        if (antes === false) roturas.push(v3.clone()); // un evento, no cada frame
+        if (nHoyos < hoyosLista.length) {
+          const h = hoyosLista[nHoyos++];
+          if (h.z !== v3.z || h.x !== v3.x) h.acc = h.edad = 0;
+          h.x = v3.x; h.y = v3.y; h.z = v3.z; h.s = Math.sign(v3.x) || 1;
+        }
+      }
+      hoyosVis.set(o, o.visible);
+    }
+    // el borrado que se los lleva: cuando termina, se deshace en pétalos
+    if (o === killer) {
+      if (killerVis && !o.visible) part.rafaga(o.getWorldPosition(v3), 90);
+      killerVis = o.visible;
     }
     if (o.isPointLight) {
       luces.push(o);
@@ -223,6 +248,8 @@ export function createGfx(ctx) {
         o.userData.gfxHoyo = true;
         const c = mundo.u.uCorona.value;
         o.color.setRGB(c.x, c.y, c.z);
+        // afuera no pasa el túnel: la luz entra pareja, sin ráfagas (nada parpadea)
+        if (o.intensity > 0) o.intensity = .45;
       }
     }
     if (vistos.has(o)) return;
@@ -278,6 +305,10 @@ export function createGfx(ctx) {
       if (o.isInstancedMesh) {
         parcharBorrado(lista[0]);
         borrados = o;
+      } else if (o.parent?.children.length === 4 && o.parent.children[1].geometry?.type === 'PlaneGeometry') {
+        // el que saca a la gente por la ventana (world/muerte.js) también está a medio borrar
+        parcharBorrado(lista[0]);
+        killer = o.parent;
       }
     }
   }
@@ -292,12 +323,38 @@ export function createGfx(ctx) {
       borrados = null;
       overlayU = null;
       part.limpiar();
+      disol.limpiar();
+      hoyosVis.clear();
+      killer = null;
+      killerVis = false;
       ms = 16; // armar un momento compila shaders: ese tirón no cuenta para medir
       reloj = -2;
       R.retina.forEach((t) => { renderer.setRenderTarget(t); renderer.clear(); });
     }
     luces.length = 0;
+    nHoyos = 0;
+    roturas.length = 0;
     stage?.traverse(mirar);
+    for (const r of roturas) romperse(r);
+  }
+
+  // Se rompió un vidrio: el que va saliendo por ahí se deshace en pétalos que se
+  // lleva el viento, con su forma, mientras su cuerpo se quema de los pies arriba.
+  function romperse(p) {
+    let victima = null;
+    let mejor = 2.6;
+    for (const [o, vis] of cuerpos) {
+      if (!vis || deshechos.has(o) || !esPersona(o)) continue;
+      const d = o.getWorldPosition(v3).distanceTo(p);
+      if (d < mejor) { mejor = d; victima = o; }
+    }
+    if (!victima) return;
+    deshechos.add(victima);
+    disol.iniciar(victima);
+    caja.setFromObject(victima);
+    part.figura(caja, Math.sign(p.x) || 1, 420);
+    // y por la herida entra la primera racha
+    part.entrar(p.x, p.y, p.z, Math.sign(p.x) || 1, 90, 2.2);
   }
 
   // ---------- modo y calidad ----------
@@ -458,6 +515,30 @@ export function createGfx(ctx) {
     }
   }
 
+  // Luz de afuera en el aire: haces por las ventanas, polvo que los cruza,
+  // pétalos que entran por los hoyos. Solo con el cielo abierto.
+  function afuera(dt, hay) {
+    const fuerza = hay ? mundo.u.uAbre.value : 0;
+    const c = mundo.u.uCorona.value;
+    haces.mesh.visible = fuerza > .01;
+    haces.u.uColor.value.copy(c);
+    haces.u.uFuerza.value = fuerza * 1.6;
+    haces.hoyos(hoyosLista, hay ? nHoyos : 0);
+    part.polvoU.uHaz.value.copy(c).multiplyScalar(fuerza * .9);
+    part.petaloU.uVentana.value.copy(c).multiplyScalar(fuerza * 1.1);
+    disol.update(dt);
+    if (!hay) return;
+    for (let i = 0; i < nHoyos; i++) {
+      const h = hoyosLista[i];
+      h.edad += dt; // su haz se enciende de a poco, nunca de golpe
+      h.acc += dt * 3.5 * fuerza; // unos tres pétalos por segundo por hoyo
+      while (h.acc >= 1) {
+        h.acc -= 1;
+        part.entrar(h.x, h.y, h.z, h.s);
+      }
+    }
+  }
+
   function render(dt) {
     if (!GFX.on) {
       renderer.render(scene, camera);
@@ -521,6 +602,7 @@ export function createGfx(ctx) {
       if (borrados && flash > .5 && flashAntes <= .5) part.emitirDesde(borrados, camera);
     }
     flashAntes = flash;
+    afuera(dt, enVagon && exterior);
 
     const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
     U.ao.uTan.value.set(tan * camera.aspect, tan);
@@ -574,6 +656,9 @@ export function createGfx(ctx) {
       pasada(M.dof, R.b);
       cuadro = R.b;
     }
+
+    // haces del eclipse: después del piso mojado, para que no se reflejen en él
+    if (haces.mesh.visible) haces.dibujar(renderer, camera, depth, cuadro);
 
     // 3 · celular y capa de pantalla, encima y nítidos
     camera.layers.set(1);
