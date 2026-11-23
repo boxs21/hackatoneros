@@ -381,11 +381,28 @@ void main() {
 
 // Polvo en el aire: puntos que solo brillan dentro del haz del flash (o con el
 // vagón encendido). Fuera de foco se agrandan, como en una foto.
+// También brillan si cruzan un haz del eclipse (las ventanas del lado del sol):
+// se proyecta la mota contra el vidrio siguiendo la luz y se mira si cae en un paño.
 export const POLVO_V = /* glsl */ `
 attribute vec3 aSeed;
 uniform float uTime, uFlash, uAmb, uPx, uFoco;
-uniform vec3 uCam, uFwd, uCaja;
-varying float vA;
+uniform vec3 uCam, uFwd, uCaja, uHaz, uLuz;
+varying vec3 vC;
+float enHaz(vec3 p) {
+  float lado = sign(-uLuz.x);
+  float s = (p.x - lado * 2.47) / uLuz.x; // metros recorridos desde el vidrio
+  if (s < 0.0 || s > 4.2) return 0.0;
+  vec3 w = p - uLuz * s;
+  float z = w.z;
+  // tramos con vidrio y sus marcos (en los extremos y al medio)
+  float pano = 0.0;
+  if (z > -12.8 && z < -8.85) pano = min(min(abs(z + 12.8), abs(z + 10.825)), abs(z + 8.85));
+  else if (z > -7.15 && z < -0.85) pano = min(min(abs(z + 7.15), abs(z + 4.0)), abs(z + 0.85));
+  else if (z > 0.85 && z < 7.15) pano = min(min(abs(z - 0.85), abs(z - 4.0)), abs(z - 7.15));
+  else if (z > 8.85 && z < 12.8) pano = min(min(abs(z - 8.85), abs(z - 10.825)), abs(z - 12.8));
+  float dentro = smoothstep(0.05, 0.15, pano) * smoothstep(1.38, 1.5, w.y) * smoothstep(2.42, 2.3, w.y);
+  return dentro * pow(1.0 - s / 4.2, 1.25) * smoothstep(0.95, 1.45, p.y) * smoothstep(0.55, 1.35, abs(p.x));
+}
 void main() {
   vec3 p = position;
   p.x += sin(uTime * 0.13 * (0.5 + aSeed.x) + aSeed.y * 6.28) * 0.3;
@@ -400,28 +417,35 @@ void main() {
   float dentro = step(abs(p.x), 2.35) * step(0.1, p.y) * step(p.y, 3.0);
   float size = uPx * (0.008 + 0.05 * abs(1.0 / uFoco - 1.0 / dist)) / dist;
   size = clamp(size, 1.0, 26.0);
-  vA = lit * dentro * smoothstep(0.2, 0.6, dist) * (1.0 - smoothstep(5.0, 7.5, dist)) * min(1.0, 9.0 / (size * size));
+  float vis = dentro * smoothstep(0.2, 0.6, dist) * (1.0 - smoothstep(5.0, 7.5, dist)) * min(1.0, 9.0 / (size * size));
+  // en el haz: solo una de cada tres motas, para que se vea polvo y no niebla
+  float haz = max(uHaz.r, max(uHaz.g, uHaz.b)) > 0.001 ? enHaz(p) * step(0.66, aSeed.x) * 1.6 : 0.0;
+  vC = (vec3(1.0, 0.93, 0.8) * lit + uHaz * haz) * vis;
   gl_PointSize = size;
   gl_Position = projectionMatrix * mv;
 }`;
 
 export const POLVO_F = /* glsl */ `
-varying float vA;
+varying vec3 vC;
 void main() {
   float r = length(gl_PointCoord - 0.5);
   float a = smoothstep(0.5, 0.32, r) * (0.75 + 0.25 * smoothstep(0.2, 0.45, r));
-  gl_FragColor = vec4(vec3(1.0, 0.93, 0.8) * vA * a, 1.0);
+  gl_FragColor = vec4(vC * a, 1.0);
 }`;
 
 // Pétalos: lo que queda de un borrado. Se desprenden de las siluetas (los que
-// tienen aNace < 0, en bucle) o caen donde alguien desapareció (ráfaga).
-// Nunca brillan solos: solo con el flash o con la imagen retenida.
+// tienen aNace < 0, en bucle) o nacen donde alguien desapareció (aVel.w = modo:
+// 0 caen, 1 se los lleva el viento por la ventana, 2 entran por la ventana rota).
+// Los sueltos nunca brillan solos: solo con el flash o con la imagen retenida.
+// Los demás, además, toman la luz de afuera cuando pasan junto a las ventanas
+// (en el aire; posados en el piso quedan a oscuras).
 export const PETALO_V = /* glsl */ `
 attribute vec3 aOrigen;
 attribute vec4 aSeed;
 attribute float aNace;
+attribute vec4 aVel;
 uniform float uTime, uFlash, uGlow, uAmb;
-uniform vec3 uCam, uFwd;
+uniform vec3 uCam, uFwd, uVentana;
 varying vec3 vColor;
 varying vec2 vQ;
 varying float vA;
@@ -435,13 +459,33 @@ void main() {
       vida * (0.35 + 0.7 * aSeed.x),
       cos(aSeed.y * 6.28 + vida * 4.0) * 0.22 * vida + (aSeed.z - 0.5) * 0.7 * vida);
     alpha = sin(3.14159 * vida);
-  } else {
+  } else if (aVel.w < 0.5) {
     float t = uTime - aNace;
     vida = clamp(t / (5.0 + 4.0 * aSeed.x), 0.0, 1.0);
     float abre = 1.0 - exp(-t * 1.6);
     p.xz += (aSeed.zy - 0.5) * 1.5 * abre + vec2(sin(t * 0.9 + aSeed.x * 6.28), cos(t * 0.7 + aSeed.w * 6.28)) * 0.1 * (1.0 - vida);
     p.y = max(0.02, p.y + 0.25 * aSeed.w * abre - vida * vida * (p.y + 0.3));
     alpha = smoothstep(0.0, 0.03, vida) * (1.0 - smoothstep(22.0, 30.0, t));
+  } else {
+    float t = max(uTime - aNace, 0.0);
+    float k = aVel.w < 1.5 ? 0.8 : 1.5; // roce del aire
+    p += aVel.xyz * (1.0 - exp(-t * k)) / k;
+    float giroA = min(t, 1.5);
+    p.xz += vec2(sin(t * 0.9 + aSeed.x * 6.28), cos(t * 0.7 + aSeed.w * 6.28)) * 0.14 * giroA;
+    if (aVel.w < 1.5) {
+      // viento: suben despacio y se van con el cielo
+      p.y += t * (0.1 + 0.22 * aSeed.z);
+      p.z += t * (0.25 + 0.3 * aSeed.y);
+      vida = 0.5;
+      alpha = step(-0.4, uTime - aNace) * (1.0 - smoothstep(5.0, 8.0 + 4.0 * aSeed.y, t)); // quietos con su forma hasta que el viento los toma
+    } else {
+      // entran: planean y se posan en el asiento o en el piso
+      float ax = abs(p.x);
+      float suelo = ax > 1.93 && ax < 2.44 ? 0.53 : 0.02;
+      p.y = max(suelo, p.y - t * (0.14 + 0.12 * aSeed.z));
+      vida = p.y <= suelo + 0.001 ? 1.0 : 0.5;
+      alpha = smoothstep(0.0, 0.5, t) * (1.0 - smoothstep(24.0, 32.0, t));
+    }
   }
   vec4 mv = viewMatrix * vec4(p, 1.0);
   float dist = max(-mv.z, 0.05);
@@ -449,13 +493,24 @@ void main() {
   vec2 q = position.xy * vec2(1.0, 0.5 + 0.5 * sin(giro * 1.7));
   float cs = cos(giro), sn = sin(giro);
   q = vec2(q.x * cs - q.y * sn, q.x * sn + q.y * cs);
-  mv.xy += q * 0.085 * (0.55 + 0.8 * aSeed.w);
+  mv.xy += q * 0.085 * (0.55 + 0.8 * aSeed.w) * (aVel.w > 1.5 ? 1.5 : aVel.w > 0.5 ? 1.8 : 1.0);
   vec3 dir = normalize(p - uCam);
   float cono = smoothstep(0.62, 0.95, dot(dir, uFwd));
   float lit = uFlash * cono * 3.2 / (1.0 + dist * dist * 0.1) + uGlow * 0.9 * step(aNace, 0.0) + uAmb;
   vec3 carmin = vec3(0.95, 0.07, 0.11), marfil = vec3(1.0, 0.86, 0.80), oro = vec3(1.0, 0.72, 0.30);
   vec3 c = aSeed.x < 0.55 ? carmin : aSeed.x < 0.86 ? marfil : oro;
-  vColor = c * lit;
+  // la luz de afuera: junto al vidrio y en el aire; del otro lado, a contraluz
+  float ax = abs(p.x);
+  float ventana = step(0.0, aNace) * (smoothstep(1.5, 2.45, ax) * smoothstep(0.95, 1.45, p.y) + smoothstep(2.45, 2.8, ax) * 1.4);
+  if (aVel.w > 0.5 && aVel.w < 1.5) {
+    // la forma de alguien: junto al vidrio a cualquier altura, y nace ardiendo
+    // (una brasa que solo se apaga, nunca vuelve a encenderse)
+    ventana = max(ventana, smoothstep(1.4, 2.3, ax));
+    float t = max(uTime - aNace, 0.0);
+    lit += 1.6 * exp(-t * 0.9) * (0.6 + 0.4 * aSeed.z);
+  }
+  if (aVel.w > 1.5) lit += 0.7 * exp(-max(uTime - aNace, 0.0) * 0.45); // traen luz de afuera; se les apaga al posarse
+  vColor = c * lit + (c * 0.7 + vec3(0.3, 0.22, 0.12)) * uVentana * ventana;
   vA = alpha;
   vQ = position.xy;
   gl_Position = projectionMatrix * mv;
