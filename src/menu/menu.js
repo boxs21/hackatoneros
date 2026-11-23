@@ -45,7 +45,7 @@ const ESCENAS = {
 };
 const PANELES = {
   como: ['CÓMO SE JUEGA', 'LLEGA A CASA SIN QUE TE TOQUEN.', 'WASD  MOVERSE · MOUSE  MIRAR', 'F  FOTO. VES, PERO SE ACERCAN.', 'E  USAR · ESPACIO  SALTAR', '1 2  RESPONDER · TAB  MISIONES', 'ESC  PAUSA Y MENÚ', 'MEJOR CON AUDÍFONOS.'],
-  creditos: ['CRÉDITOS', '', 'VALENTÍN CASTRO', 'CAMILO BUFADEL', 'RENATO LENIS', 'ANDY VILLARROEL', 'MÚSICA: BEFORE THE CITY WAKES', 'HECHO CON CODEX'],
+  creditos: ['CRÉDITOS', 'VALENTÍN CASTRO', 'CAMILO BUFADEL', 'RENATO LENIS', 'ANDY VILLARROEL', '', 'MÚSICA: BEFORE THE CITY WAKES', 'GENERADA CON IA (GEMINI)', '', 'HECHO CON CODEX'],
 };
 
 export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
@@ -133,7 +133,9 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
 
   // --- Dibujo --------------------------------------------------------------
 
-  const cajasOpciones = OPCIONES.map((_, i) => ({ x: 14, y: 128 + i * 22 - 4, w: 200, h: 22 }));
+  // Las tres opciones del juego van grandes. ESCENAS es un atajo para probar: chico y aparte.
+  const lugar = (i) => (OPCIONES[i][0] === 'escenas' ? { y: 204, e: 1 } : { y: 128 + i * 22, e: 2 });
+  const cajasOpciones = OPCIONES.map((_, i) => { const { y, e } = lugar(i); return { x: 14, y: y - 4, w: 200, h: e === 2 ? 22 : 14 }; });
   const AVISO = 'ESTE JUEGO USA DESTELLOS DE LUZ REPETIDOS';
 
   function dibujar() {
@@ -151,8 +153,7 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
       return;
     }
     g.globalAlpha = Math.min(1, (reloj - entrada) / 0.6);
-    texto(g, AVISO, centro(AVISO, 1), 68, 1, GRIS);
-    texto(g, 'MÚSICA · BEFORE THE CITY WAKES', 14, 226, 1, GRIS);
+    if (!panel) texto(g, AVISO, centro(AVISO, 1), 227, 1, GRIS);
 
     if (panel === 'escenas') {
       g.fillStyle = 'rgba(0, 0, 0, 0.8)'; g.fillRect(12, 92, 212, 118);
@@ -166,17 +167,17 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
       });
       texto(g, 'ENTER · IR   ESC · VOLVER', 22, 201, 1, GRIS);
     } else if (panel) {
-      g.fillStyle = 'rgba(0, 0, 0, 0.8)'; g.fillRect(12, 92, 212, 118);
-      g.fillStyle = AMBAR; g.fillRect(12, 92, 212, 1); g.fillRect(12, 92, 1, 118);
+      g.fillStyle = 'rgba(0, 0, 0, 0.8)'; g.fillRect(12, 92, 212, 134);
+      g.fillStyle = AMBAR; g.fillRect(12, 92, 212, 1); g.fillRect(12, 92, 1, 134);
       PANELES[panel].forEach((linea, i) => texto(g, linea, 22, 102 + i * 11, 1, i === 0 ? AMBAR : TINTA));
-      texto(g, 'ESC · VOLVER', 22, 198, 1, GRIS);
+      texto(g, 'ESC · VOLVER', 22, 214, 1, GRIS);
       if (panel === 'creditos' && logoListo) g.drawImage(logo, 196, 100);
     } else {
       OPCIONES.forEach(([, nombre], i) => {
         const activa = i === sel;
-        const y = 128 + i * 22;
-        if (activa && (quieto || Math.sin(reloj * 6) > -0.4)) texto(g, '>', 16, y, 2, AMBAR);
-        texto(g, nombre, 34, y, 2, activa ? AMBAR : GRIS);
+        const { y, e } = lugar(i);
+        if (activa && (quieto || Math.sin(reloj * 6) > -0.4)) texto(g, '>', e === 2 ? 16 : 22, y, e, AMBAR);
+        texto(g, nombre, 34, y, e, activa ? AMBAR : GRIS);
       });
       if (logoListo) {
         g.drawImage(logo, W - 14 - LOGO, 196);
