@@ -1,0 +1,45 @@
+/* OBJETO OBTENIDO. Dueño: Renato. Medidas en cqh = % del alto de la pantalla. */
+.ob { position: absolute; inset: 0; container-type: size; pointer-events: none; display: grid; place-items: center; z-index: 3; }
+.ob-card {
+  display: grid; justify-items: center; gap: 1cqh; padding: 3cqh 7cqh 3.4cqh; margin-top: -6cqh;
+  background: radial-gradient(closest-side, rgba(8, 9, 14, .88), rgba(8, 9, 14, .7) 70%, rgba(8, 9, 14, 0));
+  font-family: ui-monospace, Menlo, Consolas, monospace; text-align: center; color: #f4f1ea;
+  text-shadow: 0 .4cqh 0 rgba(0, 0, 0, .8); opacity: 0;
+}
+.ob.on .ob-card { animation: ob-in .45s cubic-bezier(.2, 1.5, .4, 1) both; }
+.ob.out .ob-card { animation: ob-out .35s ease-in both; }
+
+/* el sprite con rayos girando detrás */
+.ob-icon { position: relative; display: grid; place-items: center; width: 22cqh; height: 22cqh; }
+.ob-icon canvas { position: relative; width: 16cqh; height: 16cqh; image-rendering: pixelated; filter: drop-shadow(0 .8cqh 0 rgba(0, 0, 0, .55)); }
+.ob.on .ob-icon canvas { animation: ob-pop .5s cubic-bezier(.2, 1.8, .4, 1) .08s both, ob-bob 1.4s ease-in-out .6s infinite; }
+.ob-rays {
+  position: absolute; inset: -6cqh; border-radius: 50%;
+  background: repeating-conic-gradient(rgba(242, 183, 5, .32) 0 10deg, transparent 10deg 30deg);
+  mask: radial-gradient(closest-side, #000 30%, transparent 100%);
+  -webkit-mask: radial-gradient(closest-side, #000 30%, transparent 100%);
+}
+.ob.on .ob-rays { animation: ob-spin 6s linear infinite, ob-flash .5s ease-out both; }
+
+.ob-kicker { font-size: 2.6cqh; font-weight: 700; letter-spacing: .3em; text-transform: uppercase; color: #f2b705; }
+.ob-name { font-size: 5cqh; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; line-height: 1.05; }
+.ob-use {
+  margin-top: .6cqh; padding: .6cqh 1.8cqh; font-size: 2.6cqh; font-weight: 600;
+  border-top: .4cqh solid #f2b705; border-bottom: .4cqh solid #f2b705; color: #f2b705;
+}
+
+@keyframes ob-in {
+  0% { opacity: 0; transform: scale(.6); filter: brightness(3); }
+  60% { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes ob-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-4cqh) scale(.92); } }
+@keyframes ob-pop { 0% { transform: scale(0) rotate(-20deg); } 100% { transform: none; } }
+@keyframes ob-bob { 50% { transform: translateY(-1.2cqh); } }
+@keyframes ob-spin { to { rotate: 360deg; } }
+@keyframes ob-flash { 0% { filter: brightness(4); opacity: 1; } 100% { filter: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ob.on .ob-card, .ob.out .ob-card { animation: none; opacity: 1; }
+  .ob.on .ob-icon canvas, .ob.on .ob-rays { animation: none; }
+}

@@ -36,8 +36,8 @@ const PEDAZOS = [
   [-.2, -9.9, 1.2, .9, .3, 'puerta'],
   [0, -11.8, 4.6, 2.2, 0, 'piso', { fin: true }],
 ];
-const QUIETO = 5; // s quieto en un pedazo antes de que suba algo
-const AGARRA = 8.5; // s quieto: te agarra
+const QUIETO = 7; // s quieto en un pedazo antes de que suba algo (tiempo para mirar y calcular)
+const AGARRA = 11; // s quieto: te agarra
 
 let S = null;
 

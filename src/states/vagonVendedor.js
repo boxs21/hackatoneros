@@ -20,7 +20,7 @@ import { setupVagon, walkVagon } from '../world/vagonEscena.js';
 const START_Z = 11.2;
 const GOAL_Z = VAGON.endDoorZ + 1.1;
 const GUIDE_AHEAD = 3.2; // la voz va esta distancia delante tuyo
-const CREEP_EVERY = 7; // cada cuántos segundos se arriman solos
+const creepEvery = () => 5 + Math.random() * 4; // se arriman solos cada 5–9 s (irregular: no se aprende)
 
 let S = null;
 
@@ -56,8 +56,8 @@ export default {
     const guia = new THREE.Vector3(0, 1.5, START_Z - GUIDE_AHEAD);
     const voz = ctx.audio.posicional('vendedor', guia, { camera: ctx.camera, volume: 1 });
 
-    S = { scene, crowd, scare, retry, t: 0, caught: -1, done: false, leaveAt: 0, llavero, guia, voz,
-      bestZ: START_Z, nextCreep: CREEP_EVERY, intro: retry ? 99 : 0, flashes: 0 };
+    S = { atras: new THREE.Vector3(), detrasAt: 0, cortarAt: 0, scene, crowd, scare, retry, t: 0, caught: -1, done: false, leaveAt: 0, llavero, guia, voz,
+      bestZ: START_Z, nextCreep: creepEvery(), intro: retry ? 99 : 0, flashes: 0 };
     S.flash = createFlash({
       onFire(count) {
         S.flashes = count;
@@ -107,12 +107,27 @@ export default {
     S.llavero.position.set(cam.position.x, .5, cam.position.z);
 
     // La voz guía: siempre un poco más adelante, hasta la puerta del fondo.
-    S.guia.set(Math.sin(S.t * .7) * .35, 1.5, Math.max(VAGON.endDoorZ + .4, cam.position.z - GUIDE_AHEAD));
+    if (!S.done) S.guia.set(Math.sin(S.t * .7) * .35, 1.5, Math.max(VAGON.endDoorZ + .4, cam.position.z - GUIDE_AHEAD));
     S.voz.setPosition?.(S.guia);
+    // Golpe final: ya en la puerta, su voz suena justo detrás de ti… y se corta todo.
+    if (S.detrasAt && S.t >= S.detrasAt) {
+      S.detrasAt = 0;
+      cam.getWorldDirection(S.atras);
+      S.guia.copy(cam.position).addScaledVector(S.atras.setY(0).normalize(), -.55);
+      S.guia.y = 1.5;
+      ctx.audio.sfx('susto', { volume: .7 });
+      ctx.hud.subtitle('VENDEDOR: …a luca, caserito.', 1800);
+      S.cortarAt = S.t + 1.1;
+    }
+    if (S.cortarAt && S.t >= S.cortarAt) {
+      S.cortarAt = 0;
+      S.voz.stop?.(.05);
+      ctx.fader.cut();
+    }
 
     // Quedarse quieto no sirve: se arriman solos, de a poco.
     if (!S.done && S.t > S.nextCreep) {
-      S.nextCreep = S.t + CREEP_EVERY;
+      S.nextCreep = S.t + creepEvery();
       crowd.step(cam.position, .12);
       ctx.audio.sfx('crujido', { volume: .5 });
     }
@@ -155,12 +170,12 @@ export default {
     // Llegaste a la puerta del fondo.
     if (!S.done && cam.position.z < GOAL_Z) {
       S.done = true;
-      S.voz.stop?.(.6);
       ctx.audio.sfx('puertas');
       ctx.hud.subtitle(S.flashes === 0
         ? 'Sin un solo flash. La caja del Vendedor está en el piso. Él no.'
         : 'La caja del Vendedor está en el piso. Él no.', 3200);
-      S.leaveAt = S.t + 2.6;
+      S.detrasAt = S.t + 2.4;
+      S.leaveAt = S.t + 4.6;
     }
   },
   exit(ctx) {

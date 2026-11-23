@@ -1,0 +1,115 @@
+/* VISOR DE CÁMARA. Dueño: Renato. Medidas en cqh = % del alto de la pantalla. */
+.cam {
+  --osd: #f4f1ea; --rec: #ff5148; --accent: var(--hint, #f2b705); --danger: 0;
+  position: absolute; inset: 0; container-type: size; pointer-events: none;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; color: var(--osd);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.cam-osd, .cam-static { opacity: 0; transition: opacity .25s; }
+.cam[data-on="1"] .cam-osd { opacity: 1; }
+.cam[data-on="1"] .cam-static { opacity: calc(var(--danger) * .28); }
+
+.cam-osd { position: absolute; inset: 0; text-shadow: 0 .3cqh 0 rgba(0, 0, 0, .75); font-size: 3.4cqh; }
+
+/* Estática del radar */
+.cam-static { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; mix-blend-mode: screen; }
+
+/* Esquinas del visor */
+.cam-corner { position: absolute; width: 7cqh; height: 7cqh; border: 0 solid var(--osd); filter: drop-shadow(0 .3cqh 0 rgba(0, 0, 0, .6)); }
+.cam-corner.tl { left: 4cqh; top: 4cqh; border-width: .7cqh 0 0 .7cqh; }
+.cam-corner.tr { right: 4cqh; top: 4cqh; border-width: .7cqh .7cqh 0 0; }
+.cam-corner.bl { left: 4cqh; bottom: 4cqh; border-width: 0 0 .7cqh .7cqh; }
+.cam-corner.br { right: 4cqh; bottom: 4cqh; border-width: 0 .7cqh .7cqh 0; }
+
+.cam-tl, .cam-tr, .cam-bl, .cam-br { position: absolute; display: flex; align-items: center; gap: 2cqh; }
+.cam-tl { left: 7cqh; top: 6.5cqh; }
+.cam-tr { right: 7cqh; top: 6.5cqh; }
+.cam-bl { left: 7cqh; bottom: 6.5cqh; flex-direction: column; align-items: flex-start; gap: .6cqh; }
+.cam-br { right: 7cqh; bottom: 6.5cqh; }
+
+.cam-rec { display: flex; align-items: center; gap: 1cqh; }
+.cam-rec b { width: 2.4cqh; height: 2.4cqh; border-radius: 50%; background: var(--rec); animation: cam-blink 1s steps(2) infinite; }
+
+.cam-batt { position: relative; width: 6cqh; height: 3cqh; border: .5cqh solid var(--osd); padding: .4cqh; }
+.cam-batt::after { content: ""; position: absolute; right: -1.3cqh; top: .6cqh; width: .8cqh; height: 1cqh; background: var(--osd); }
+.cam-batt span { display: block; height: 100%; background: var(--osd); min-width: .5cqh; }
+.cam-low { display: none; color: var(--rec); animation: cam-blink 1s steps(2) infinite; }
+.cam.low .cam-low { display: inline; }
+.cam.low .cam-pct, .cam.low .cam-batt { color: var(--rec); border-color: var(--rec); }
+.cam.low .cam-batt span, .cam.low .cam-batt::after { background: var(--rec); }
+
+.cam-flash {
+  display: grid; place-items: center; width: 4.6cqh; height: 4.6cqh; border: .5cqh solid var(--osd);
+  background: var(--accent); color: #0b0f14; text-shadow: none; font-size: 3cqh;
+}
+.cam-flash.wait { background: transparent; color: #6b7080; border-color: #6b7080; }
+.cam-bar { width: 9cqh; height: 1.6cqh; border: .4cqh solid var(--osd); padding: .3cqh; }
+.cam-bar i { display: block; height: 100%; width: 100%; background: var(--osd); }
+.cam.hot .cam-bar, .cam.hot .cam-flash.wait { border-color: var(--rec); }
+.cam.hot .cam-bar i, .cam.hot .cam-fl { background: var(--rec); color: var(--rec); }
+.cam.hot .cam-fl { background: none; }
+
+/* Retícula central */
+.cam-cross { position: absolute; left: 50%; top: 50%; width: 4cqh; height: 4cqh; transform: translate(-50%, -50%); opacity: .7; }
+.cam-cross::before, .cam-cross::after { content: ""; position: absolute; background: var(--osd); }
+.cam-cross::before { left: 50%; top: 0; bottom: 0; width: .4cqh; transform: translateX(-50%); }
+.cam-cross::after { top: 50%; left: 0; right: 0; height: .4cqh; transform: translateY(-50%); }
+
+/* Radar: aviso de interferencia */
+.cam-warn {
+  position: absolute; left: 50%; top: 13cqh; transform: translateX(-50%); padding: .5cqh 1.5cqh;
+  color: var(--rec); border: .4cqh solid var(--rec); opacity: 0; font-size: 3cqh;
+}
+.cam.radar .cam-warn { opacity: 1; animation: cam-blink .5s steps(2) infinite; }
+
+/* Miniatura de la foto recién sacada */
+.cam-photo {
+  position: absolute; right: 0; bottom: 7cqh; display: grid; gap: .5cqh; justify-items: end;
+  opacity: 0; transform: translateY(2cqh) scale(.9); transition: opacity .12s, transform .2s cubic-bezier(.2, 1.6, .4, 1);
+}
+.cam-photo.on { opacity: 1; transform: none; }
+.cam-photo canvas { width: 22cqh; height: 16.5cqh; image-rendering: pixelated; border: .6cqh solid var(--osd); box-shadow: 0 .6cqh 0 rgba(0, 0, 0, .6); }
+.cam-photo small { font-size: 2.6cqh; }
+
+/* Mensajes (pistas): entran con fuerza arriba al centro */
+.cam-msgs { position: absolute; left: 50%; top: 19cqh; transform: translateX(-50%); width: 44%; display: grid; gap: 1.5cqh; }
+.cam-msg {
+  padding: 1.6cqh 2.4cqh; background: rgba(8, 9, 14, .82); border: .5cqh solid var(--osd);
+  border-left: 1.4cqh solid var(--accent); text-transform: none; letter-spacing: 0;
+  animation: cam-msg-in .35s cubic-bezier(.2, 1.6, .4, 1) both;
+}
+.cam-msg.seen, .cam-msg.old { animation: none; }
+.cam-msg.old { opacity: .55; border-left-color: #6b7080; }
+.cam-msg b { display: block; font-size: 2.4cqh; letter-spacing: .08em; color: var(--accent); text-transform: uppercase; }
+.cam-msg p { margin: .6cqh 0 0; font-size: 3.6cqh; font-weight: 600; line-height: 1.25; }
+
+/* Sin batería: la imagen se cierra a una línea y queda negro */
+.cam-dead { position: absolute; inset: 0; display: grid; place-items: center; background: #000; opacity: 0; font-size: 4cqh; color: #6b7080; }
+.cam-dead span { opacity: 0; }
+.cam[data-power="off"] .cam-dead { animation: cam-off .7s ease-in forwards; }
+.cam[data-power="off"] .cam-dead span { animation: cam-blink 1s steps(2) .9s 3 both; }
+
+/* Regalos (arriba izq., mechanics/regalos.js) y misiones (arriba der.) bajan
+   bajo REC y batería, dentro de las esquinas del visor */
+#hud > div[aria-live="polite"]:not(.hud-misiones) { top: 13% !important; left: 6% !important; max-width: 21% !important; }
+.hud-misiones { top: 13% !important; right: 6% !important; max-width: 21% !important; }
+
+/* Los subtítulos suben un poco para no pisar la fecha ni el flash */
+.hud-sub { bottom: 14% !important; max-width: 64% !important; }
+
+@keyframes cam-blink { 50% { opacity: 0; } }
+@keyframes cam-msg-in {
+  0% { opacity: 0; transform: translateX(-4cqh) skewX(-12deg); filter: brightness(3); }
+  60% { opacity: 1; transform: translateX(1cqh) skewX(4deg); }
+  100% { transform: none; filter: none; }
+}
+@keyframes cam-off {
+  0% { opacity: 1; background: #fff; clip-path: inset(0 0 0 0); }
+  20% { background: #fff; clip-path: inset(49% 0 49% 0); }
+  45% { background: #fff; clip-path: inset(49.6% 46% 49.6% 46%); }
+  60%, 100% { opacity: 1; background: #000; clip-path: inset(0 0 0 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cam-msg, .cam-photo { animation: none; transition: none; }
+}

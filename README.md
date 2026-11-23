@@ -2,7 +2,7 @@
 
 > *Sales de la pega. El metro se apaga. Solo puedes ver a la gente con el flash.*
 
-Juego corto de terror suave en primera persona, ambientado en un vagón de metro de Santiago a la hora punta. Hecho en un día para la hackathon **Build Games with Codex** (Santiago, 23 de noviembre de 2026), parte del UDDevs Game Fest 2026.
+Juego corto de terror en primera persona, ambientado en un vagón de metro de Santiago a la hora punta. Hecho en un día para la hackatón **Build Games with Codex** (Santiago, 23 de noviembre de 2026), parte del UDDevs Game Fest 2026.
 
 **▶ Jugar en el navegador:** https://boxs21.github.io/hackatoneros/
 
@@ -10,32 +10,48 @@ Juego corto de terror suave en primera persona, ambientado en un vagón de metro
 
 ## Descripción
 
-Son las seis de la tarde. Sales de la pega y te subes a un metro lleno. Entre empujones conoces a cuatro pasajeros: un escolar, un oficinista que habla con su jefe, una señora que vuelve de la feria y un vendedor de chocolates.
+Son las 18:04. Sales de la pega y te subes a la **Línea 23** rumbo a Casa. Tu celular no tiene batería y el metro va lleno. Entre empujones conoces a cuatro pasajeros: un escolar, una señora que vuelve de la feria, un vendedor de chocolates y un oficinista que te presta su celular para llamar a tu mamá.
 
-De pronto el tren frena en el túnel y se apaga todo. Silencio. La multitud desapareció y solo quedan ustedes cinco. Pero no están solos: **la gente solo se ve con el flash del celular.** Y cada vez que lo usas, están más cerca.
+Suena una vez… y el tren frena en el túnel. Se apaga todo. **A la gente solo se la ve con el flash del celular, y cada flash los acerca.** Uno a uno, los cuatro desaparecen, y lo que te dejó cada uno es lo que te permite llegar a Casa.
+
+**Objetivo:** cruzar los vagones hasta la estación Casa.
 
 - **Duración:** unos 5 minutos.
-- **Género:** terror suave, exploración y puzzles cortos.
+- **Género:** terror, exploración y puzzles cortos.
 - **Plataforma:** navegador de escritorio (Chrome, Edge o Firefox recientes).
 - **Idioma:** español de Chile.
 
+### El recorrido
+
+| # | Momento | Qué haces |
+| --- | --- | --- |
+| 1 | Menú | Letrero LED del tren: «FIN DE SERVICIO · LÍNEA 23 · ÚLTIMO TREN». |
+| 2 | Hora punta | Avanzas empujando a la multitud, conoces a los cuatro, les respondes y cada uno te da un objeto. |
+| 3 | Apagón | Corte seco a negro y silencio. |
+| 4 | Los cinco | Aprendes el flash: la segunda foto muestra a alguien que no debería estar. |
+| 5 | Los borrados | El vagón está lleno de siluetas que solo se ven con el flash. Cada foto los acerca y se lleva a uno de los cuatro. |
+| 6 | Vagón del Escolar | Un código de 3 números escrito con tiza, visible solo con el flash. Lo marcas en el teclado de la puerta. |
+| 7 | Vagón roto | No hay piso: saltas entre pedazos del vagón. El flash muestra el camino por un instante. |
+| 8 | Vagón del Vendedor | Oscuridad total. Su voz te guía desde adelante. |
+| 9 | Estación Casa | El final. |
+
 ### Lo central del juego
 
-- **El flash es tu única forma de ver,** pero cada flash acerca a "los borrados". Cada vez que aprietas F decides cuánto riesgo tomar.
-- **Los cuatro pasajeros desaparecen uno por uno, y lo ves tú,** flash a flash.
-- **Lo que dejó cada uno es la clave para salir:** la mochila del escolar, la voz del vendedor en la oscuridad.
-- **El sonido es parte de la mecánica:** el silencio después del apagón y el audio espacial que te guía en la oscuridad.
+- **El dilema del flash:** es tu única forma de ver, pero cada foto acerca a los borrados.
+- **Los objetos de los pasajeros cambian la partida:** el celular del oficinista (flash), el llavero con luz del escolar (alumbra tus pies), el chocolate del vendedor (te salva una vez) y el **completo italiano** de la señora (lo tiras y los borrados se van al olor).
+- **El sonido es parte de la mecánica:** el silencio del apagón y la voz del vendedor que te guía en la oscuridad. Se recomienda jugar con audífonos.
+- **Fallar no duele:** si te atrapan, reinicias el vagón en menos de un segundo; a los 30 s sin avanzar aparece una pista.
 
 ---
 
-## Cómo ejecutarlo
+## Cómo jugar o ejecutar
 
-### Opción 1: jugar en línea
-Abre el link de GitHub Pages que está arriba. No hay que instalar nada.
+### Opción 1: en línea
+Abre https://boxs21.github.io/hackatoneros/ . No hay que instalar nada.
 
-### Opción 2: correrlo en tu computador
+### Opción 2: en tu computador
 
-**Requisitos:** [Node.js](https://nodejs.org/) 20 o superior y npm (viene con Node).
+**Requisitos:** [Node.js](https://nodejs.org/) 20 o superior y npm (viene con Node). Cualquier sistema operativo.
 
 ```bash
 git clone https://github.com/boxs21/hackatoneros.git
@@ -46,138 +62,127 @@ npm run dev
 
 Abre la dirección que aparece en la terminal (normalmente http://localhost:5173).
 
-Para generar la versión de producción:
+Versión de producción:
 
 ```bash
 npm run build     # genera la carpeta dist/
 npm run preview   # sirve dist/ en local para probarla
 ```
 
-La carpeta `dist/` es la que se publica en GitHub Pages.
-
-> **Importante:** haz click en la pantalla de inicio para empezar. Los navegadores no reproducen audio hasta que el jugador interactúa.
+> **Importante:** en el menú presiona una tecla y elige COMENZAR con Enter. Los navegadores no reproducen audio hasta que el jugador interactúa.
 
 ---
 
 ## Controles
 
-| Acción | Tecla |
-| --- | --- |
-| Moverse | W A S D |
-| Mirar | Mouse |
-| **Flash** | **F** |
-| Interactuar con objetos | E |
-| Pausa / soltar el mouse | Esc |
+**Movimiento**
+- **W A S D** (o flechas): moverse
+- **Mouse:** mirar
 
-Cada mecánica se explica en pantalla la primera vez que aparece. Si te quedas atascado, a los 30 segundos aparece una pista en el celular del juego, y a los 90 segundos el tren avanza solo.
+**Acciones**
+- **F:** flash del celular (desde que se corta la luz)
+- **E:** usar o interactuar (teclado de la puerta, tirar el completo, recoger)
+- **Espacio:** saltar (vagón roto) · saltar diálogo (hora punta, también con Enter)
+- **1 / 2:** responder a los pasajeros
+- **Tab:** ver la lista de misiones
 
-### Modo demo (para presentar)
+**Reiniciar o volver al menú**
+- Si te atrapan, el vagón se reinicia solo.
+- **Esc:** suelta el mouse y pausa; **Esc** de nuevo vuelve al menú. Click para seguir jugando.
+- En el menú: **flechas** y **Enter**. El panel **ESCENAS** salta directo a cualquier momento.
 
-Agrega `?demo=1` al final de la URL. Con las teclas **1 a 8** saltas directo a cada momento del juego:
+**Gráficos**
+- **G:** alterna entre el modo pintura y el look PS1 · **Mayús + G:** calidad · **V:** tipo de trazo (en modo pintura)
 
-| Tecla | Momento |
-| --- | --- |
-| 1 | Pantalla de inicio |
-| 2 | Hora punta |
-| 3 | Apagón |
-| 4 | Los cinco |
-| 5 | Los borrados |
-| 6 | Vagón del Escolar |
-| 7 | Vagón del Vendedor |
-| 8 | Final |
+### Para presentar o probar
 
-En modo demo también: **N** pasa al siguiente momento, **R** reinicia el actual y **H** oculta el panel.
+- Agrega `?demo=1` a la URL: las teclas **1 a 9** saltan a cada momento (1 menú, 2 hora punta, 3 apagón, 4 los cinco, 5 borrados, 6 Escolar, 7 Vendedor, 8 final, 9 vagón roto), **N** pasa al siguiente, **R** reinicia el momento y **H** oculta el panel.
+- `?escena=borrados` (o `?escena=5`) parte directo en esa escena; **[** y **]** van a la anterior y la siguiente.
 
 ---
 
 ## Advertencias
 
-- **Destellos de luz:** el juego usa flashes blancos repetidos. Si tienes sensibilidad a las luces intermitentes (por ejemplo, epilepsia fotosensible), juega con precaución.
-- **Terror suave:** hay sustos y oscuridad, pero no hay sangre ni violencia explícita. Los personajes desaparecen.
+- **Destellos de luz:** el juego usa flashes blancos repetidos. Están limitados a menos de 3 por segundo, pero si tienes sensibilidad a las luces intermitentes (por ejemplo, epilepsia fotosensible), juega con precaución.
+- **Terror:** hay sustos, oscuridad y muertes de personajes (un borrado los saca por la ventana del vagón), con algo de sangre en estilo PS1. No hay contenido explícito más allá de eso.
 - **Se recomienda jugar con audífonos.**
-
-## Privacidad: uso de la cámara
-
-Al final, el juego puede pedir permiso para usar la webcam y mostrar una "selfie" dentro del juego.
-
-- La imagen **se procesa solo en tu navegador.** No se guarda, no se sube a ningún servidor y no se envía a nadie.
-- **Es opcional:** si no das permiso o no tienes cámara, el final usa una silueta y el juego funciona igual.
 
 ---
 
 ## Integrantes
 
-| Nombre | Rol |
+| Nombre | Aporte |
 | --- | --- |
-| Valentín Castro | Lead técnico: integración, flujo del juego, vagón del Vendedor y final |
-| Camilo Bufadel | Vagón 3D, mecánica del flash, los borrados y vagón del Escolar |
-| Renato <!-- TODO: apellido --> | Arte, personajes, interfaz del celular, textos y narrativa |
-| Andy Villarroel | Música, diseño de sonido, voces y audio espacial |
+| Valentín Castro | Lead técnico: estructura del proyecto, máquina de estados, modo demo y reinicio, HUD (misiones, respuestas, avisos de objetos, voces en murmullo), vagón del Vendedor, final en estación Casa, modelos 3D de los pasajeros en escena, logo de Codex y guiño a 31 Minutos |
+| Camilo Bufadel | Vagón 3D y look PS1, mecánica del flash y los borrados, hora punta, Los cinco, vagón del Escolar y vagón roto (parkour) |
+| Renato Lenis | Arte, personajes, textos y narrativa |
+| Andy Villarroel | Motor de sonido generado por código, música y voces, menú LED, regalos de los pasajeros, muertes de los borrados, modelos 3D y modo pintura |
 
 ---
 
-## Tecnologías
+## Trabajo con Codex
 
-- [Three.js](https://threejs.org/): gráficos 3D en el navegador.
-- [Vite](https://vite.dev/): servidor de desarrollo y build.
-- Web Audio API: sonido y audio espacial.
-- JavaScript plano, sin frameworks.
-- [Codex](https://openai.com/codex/): agente de programación usado para construir, probar e iterar el juego.
+Cada integrante trabajó con Codex en su parte del juego, en tareas cortas de 15 a 30 minutos. Las reglas que seguía el agente están en [`AGENTS.md`](AGENTS.md): stack sin frameworks, quién es dueño de cada carpeta y la forma de cada escena.
 
-### Estructura del proyecto
+En [`CODEX_LOG.md`](CODEX_LOG.md) registramos las decisiones: qué le pedimos, qué salió y qué decidimos. Algunos ejemplos:
 
-```
-src/
-  main.js        Punto de entrada
-  core/          Máquina de estados, eventos, modo demo, reinicio, ayudas
-  states/        Un archivo por momento del juego
-  mechanics/     Flash y borrados
-  world/         Vagón, luces y personajes
-  ui/            Celular, subtítulos y galería
-  audio/         Gestor de sonido
-public/
-  audio/         Voces, efectos y música
-```
+- **Look PS1 sin dependencias nuevas:** Codex propuso un shader que lleva los vértices a 320x240 con tramado 4x4, inyectado en los materiales de Three.js. Decidimos que todo material del vagón pase por `world/ps1.js`.
+- **Diseño a partir de otros juegos:** le pedimos analizar Iron Lung, Fatal Frame, Silent Hill, Alien: Isolation y SCP-173. Salieron el celular radar, la foto que miente y «romper la regla». Tomamos ideas de diseño, no assets.
+- **Seguridad de destellos:** el límite va en el código. Aunque se apriete F sin parar, nunca hay más de 2 destellos por segundo.
+- **Vagón roto:** reemplazamos el vagón de anomalías por un parkour con salto perdonador (coyote time y buffer). Un jugador automático lo cruzó sin caer, así que lo dejamos así.
+
+### Lo que cambiamos al probar
+
+- La hora punta duraba ~111 s; la recortamos a ~75 s para que el susto llegue antes.
+- Probamos voces habladas y el equipo prefirió murmullos sin palabras (estilo Undertale), con el tono de cada personaje.
+- En nuestras pruebas del vagón del Vendedor era fácil quedar atrapado; ahora hay menos borrados en el pasillo y cada reintento es un poco más fácil.
+- Antes del apagón el celular ya estaba en la mano y quitaba sorpresa; ahora la hora punta se ve normal y la cámara aparece recién cuando se corta la luz.
 
 ---
 
-## Cómo usamos Codex
+## Código de honor
 
-Cada integrante trabajó con Codex en su propia parte del juego, con tareas cortas de 15 a 30 minutos. Las reglas que seguía el agente están en [`AGENTS.md`](AGENTS.md).
+Incorporamos los cinco ingredientes sorpresa durante la jornada del lunes 23 de noviembre de 2026.
 
-En [`CODEX_LOG.md`](CODEX_LOG.md) registramos las decisiones importantes: qué le pedimos, qué salió y qué decidimos con el resultado. Por ejemplo: *el primer flash duraba 300 ms y se veía todo; lo bajamos a 120 ms porque la tensión viene de no alcanzar a ver.* <!-- TODO: reemplazar por una decisión real del log -->
+| Ingrediente | Dónde está |
+| --- | --- |
+| **Completo italiano** | La señora te lo regala en la hora punta («la palta y el tomate son de la feria»). |
+| **Guiño a 31 Minutos** | En Los cinco hay un calcetín con rombos en un asiento; con E habla como títere y defiende el derecho de los pasajeros a llegar a su casa. |
+| **«Queda una pura»** | El escolar, que viene contando las estaciones, grita «¡Queda una pura estación pa' Casa!» justo antes del apagón. |
+| **El número 23** | El metro es la Línea 23: está en el menú, en la lista de misiones y en el letrero de la estación Casa. |
+| **Logo de Codex** | En el menú («HECHO CON CODEX») y en Créditos. |
+
+- **Ingrediente que cambia cómo se juega y su efecto:** el **completo italiano**. Con E lo tiras y los borrados que están cerca se van al olor y te dejan pasar (en Los borrados y en el vagón del Vendedor).
+- **Prototipo previo:** no llegamos con prototipo. Todo el juego se construyó durante la jornada.
 
 ---
 
-## Créditos y licencias
+## Materiales desarrollados previamente
 
-### Código
-El código de este repositorio está bajo **licencia MIT** (ver [`LICENSE`](LICENSE)).
+Todo lo demás (código, sonido generado por código, texturas y objetos hechos con geometría) se creó durante la hackatón.
 
-### Recursos propios
-Todo lo que sigue fue creado por el equipo durante la hackathon y se publica bajo **[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.es)** (se puede usar citando a los autores):
-
-- Voces de los personajes: grabadas por los integrantes del equipo.
-- Efectos de sonido y ambiente: <!-- TODO: indicar si son grabaciones propias del metro o generados por código -->
-- Música: compuesta por Andy Villarroel. <!-- TODO: confirmar -->
-- Modelos, siluetas y texturas: creados con código (geometría de Three.js) por el equipo.
-
-### Bibliotecas de terceros
-
-| Recurso | Autor | Licencia |
-| --- | --- | --- |
-| [Three.js](https://github.com/mrdoob/three.js) | three.js authors | MIT |
-| [Vite](https://github.com/vitejs/vite) | Vite contributors | MIT |
-<!-- TODO: agregar fuentes, sonidos u otros recursos de terceros si se usaron, con autor, fuente y licencia -->
+| Recurso | Autor | Enlace público | Licencia | Cambios realizados |
+| --- | --- | --- | --- | --- |
+| Three.js (biblioteca 3D) | three.js authors | https://github.com/mrdoob/three.js | MIT | Ninguno |
+| Vite (servidor y build) | Vite contributors | https://github.com/vitejs/vite | MIT | Ninguno |
+| Modelo «Man in Suit» (oficinista) | Quaternius | https://poly.pizza/m/mQnGoME1ez | CC0 1.0 | Materiales con look PS1 y escala |
+| Modelo «Woman» (señora) | Quaternius | https://poly.pizza/m/AQsd9ngvKU | CC0 1.0 | Materiales con look PS1 y escala |
+| Modelo «Woman Casual» | Quaternius | https://poly.pizza/m/jpKRgGDxhk | CC0 1.0 | Ninguno |
+| Modelo «Hoodie Character» (escolar) | Quaternius | https://poly.pizza/m/gKLBoRsyKe | CC0 1.0 | Materiales con look PS1 y escala |
+| Modelo «Casual Character» (vendedor) | Quaternius | https://poly.pizza/m/kZ3DmIoGip | CC0 1.0 | Materiales con look PS1 y escala |
+| Fuente Cormorant Garamond (modo pintura) | Christian Thalmann | https://github.com/CatharsisFonts/Cormorant | SIL Open Font License 1.1 | Ninguno |
+| Música del menú «Before the City Wakes» | Por confirmar | Por confirmar | Por confirmar | Por confirmar |
+| Logo de Codex | OpenAI | https://hackathon.codexparatodos.com/logos/codex.png | Entregado por la organización de la hackatón | Pintado en blanco para verse sobre fondo oscuro |
 
 ### Aviso
-La "Línea 0" y las estaciones del juego son ficticias. El juego no usa logos, sonidos oficiales ni marcas de Metro de Santiago y no tiene relación con esa empresa.
+
+La Línea 23 y la estación Casa son ficticias. El juego no usa logos ni sonidos oficiales de Metro de Santiago y no tiene relación con esa empresa.
 
 ---
 
-## Declaración
+## Licencia
 
-Este proyecto se desarrolló durante la jornada del 23 de noviembre de 2026 en la hackathon Build Games with Codex (Aula Magna, Universidad del Desarrollo, Santiago de Chile).
+El código de este repositorio está bajo **licencia MIT** (ver [`LICENSE`](LICENSE)). Los recursos de terceros conservan sus propias licencias (ver la tabla de arriba).
 
 ---
 
@@ -185,8 +190,7 @@ Este proyecto se desarrolló durante la jornada del 23 de noviembre de 2026 en l
 
 | Problema | Solución |
 | --- | --- |
-| No se escucha nada | Haz click en la pantalla de inicio; revisa que la pestaña no esté silenciada. |
+| No se escucha nada | Presiona una tecla en el menú; revisa que la pestaña no esté silenciada. |
 | El mouse no mueve la cámara | Haz click dentro del juego para capturar el mouse. Esc lo suelta. |
-| El juego va lento | Cierra otras pestañas. Prueba en Chrome o Edge. |
-| La cámara no se activa | Es opcional: el final funciona sin ella. Revisa los permisos de cámara del navegador. |
+| El juego va lento | Presiona G para volver al look PS1, o Mayús + G para bajar la calidad. Cierra otras pestañas. |
 | `npm install` falla | Revisa que tengas Node.js 20 o superior (`node -v`). |

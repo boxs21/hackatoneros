@@ -2,22 +2,30 @@
 // Los nombres de las funciones se mantienen; los estados las usan.
 //   ctx.hud.title(texto, chico)       texto grande al centro ('' para ocultar)
 //   ctx.hud.subtitle(texto, ms)       subtítulo abajo; suena solo con murmullo (ui/voces.js)
-//   ctx.hud.hint(texto, ms)           pista del celular (la dispara core/help.js)
+//   ctx.hud.hint(texto, ms)           pista como mensaje en el visor de cámara (core/help.js)
 //   await ctx.hud.elegir(['Sí', 'No'], { ms })  -> índice elegido (teclas 1–3)
-//   ctx.hud.obtenido('Celular', '[F] flash')  aviso «CELULAR OBTENIDO» arriba al centro
+//   ctx.hud.obtenido('Celular', '[F] flash')  objeto obtenido al centro con su sprite
 import { murmullo } from './voces.js';
+import { createCamara } from './camara.js';
+import { createSinBateria } from './sinBateria.js';
+import { createObtenido } from './obtenido.js';
+import { createLlamada } from './llamada.js';
 
 export function createHud(root, { audio } = {}) {
   const title = el('div', 'hud-title');
   const sub = el('div', 'hud-sub');
-  const hint = el('div', 'hud-hint');
   const choice = el('div', 'hud-choice');
-  const item = el('div', 'hud-obtenido');
-  root.append(title, sub, hint, choice, item);
-  let itemTimer = 0;
+  root.append(title, sub, choice);
+  // Objeto obtenido: al centro, con su sprite (ui/obtenido.js).
+  const item = createObtenido(root, { audio });
+  // Visor de cámara a pantalla completa (DISENO.md). Las pistas entran ahí.
+  const camara = createCamara(root);
+  // Tu celular sin batería (hora punta): se anima solo cuando el subtítulo lo dice.
+  const sinBateria = createSinBateria(root, { audio });
+  // El celular del Oficinista y la llamada a tu mamá (hora punta), también por subtítulo.
+  const llamada = createLlamada(root, { audio });
 
   let subTimer = 0;
-  let hintTimer = 0;
   let voz = null;
   let cerrarEleccion = null;
 
@@ -33,6 +41,10 @@ export function createHud(root, { audio } = {}) {
     // Devuelve la voz que suena (o null), por si la escena quiere esperar su fin.
     subtitle(text, ms = 3000) {
       sub.textContent = text;
+      if (/sin bater[ií]a/i.test(text)) sinBateria.play();
+      else if (/tiene c[aá]mara y flash/i.test(text)) llamada.recibir();
+      else if (/marcas el n[uú]mero/i.test(text)) llamada.marcar();
+      else if (/^ALTAVOZ: Pr[oó]xima estaci[oó]n/i.test(text)) llamada.cortar();
       sub.classList.add('on');
       clearTimeout(subTimer);
       subTimer = setTimeout(() => sub.classList.remove('on'), ms);
@@ -43,11 +55,9 @@ export function createHud(root, { audio } = {}) {
       }
       return voz;
     },
+    camara, // ctx.hud.camara.off() apaga la cámara (final), .notify(texto, { from })
     hint(text, ms = 6000) {
-      hint.textContent = `📱 ${text}`;
-      hint.classList.add('on');
-      clearTimeout(hintTimer);
-      hintTimer = setTimeout(() => hint.classList.remove('on'), ms);
+      camara.notify(text, { ms });
     },
     // Opciones para responder. Teclas 1, 2, 3 (o click). Sin respuesta en ms,
     // elige la última opción (callarse también es una respuesta).
@@ -84,20 +94,17 @@ export function createHud(root, { audio } = {}) {
         choice.addEventListener('click', onClick);
       });
     },
-    // Aviso de objeto recibido: «CELULAR OBTENIDO» y, abajo, para qué sirve.
-    obtenido(nombre, uso = '', ms = 2600) {
-      item.innerHTML = `<b>${esc(nombre)} obtenido</b>${uso ? `<small>${esc(uso)}</small>` : ''}`;
-      item.classList.remove('on');
-      void item.offsetWidth; // reinicia la animación
-      item.classList.add('on');
-      clearTimeout(itemTimer);
-      itemTimer = setTimeout(() => item.classList.remove('on'), ms);
+    // Aviso de objeto recibido: al centro, el sprite, «¡OBTUVISTE!», nombre y para qué sirve.
+    obtenido(nombre, uso = '', ms = 2800) {
+      item.show(nombre, uso, ms);
     },
     clear() {
-      item.classList.remove('on');
+      item.hide();
       title.innerHTML = '';
       sub.classList.remove('on');
-      hint.classList.remove('on');
+      camara.clear();
+      sinBateria.stop();
+      llamada.stop();
       cerrarEleccion?.(0);
       callarVoz();
     },

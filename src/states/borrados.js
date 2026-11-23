@@ -57,9 +57,12 @@ export default {
         ctx.audio.sfx('flash');
         // El primer flash es gratis; después, cada uno los acerca.
         crowd.step(pos, count === 1 && !retry ? 0 : .25);
-        // La foto miente (Fatal Frame): en la 3.ª foto, y después de vez en cuando,
-        // sale alguien pegado a ti… y de verdad quedó uno a tu espalda.
-        const lie = (count === 3 && !retry) || (count > 4 && Math.random() < .2 && S.t - S.lastLie > 10);
+        // La foto miente (Fatal Frame): en la primera foto después de las 4 muertes
+        // (cuando crees que quedaste solo), y después de vez en cuando, sale alguien
+        // pegado a ti… y de verdad quedó uno a tu espalda. No va encima de una muerte.
+        const primeraSolo = !retry && !S.mintio && S.vanished >= passengers.length && !muertes.busy;
+        const lie = primeraSolo || (S.mintio && Math.random() < .2 && S.t - S.lastLie > 10);
+        if (lie) S.mintio = true;
         scene.lie = lie;
         if (lie) {
           S.lastLie = S.t;
