@@ -11,15 +11,18 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GFX, guardarGfx } from './config.js';
 import * as SH from './shaders.js';
 import { createParticulas } from './particulas.js';
+import { createMundo, SOL } from './mundo.js';
+import { createEscenas } from './escenas.js';
 import { borradoGeometry } from '../world/figura.js';
 import './gfx.css';
 
 const PS1 = { w: 320, h: 240 };
 const ASPECT = 16 / 9;
 const NIVELES = {
-  baja: { tope: 960, msaa: 0, radio: 1.8, dof: 0, ao: 0, ssr: 0, sombra: 512 },
-  media: { tope: 1280, msaa: 0, radio: 2.3, dof: 1, ao: 0, ssr: 1, sombra: 1024 },
-  alta: { tope: 1600, msaa: 4, radio: 2.8, dof: 1, ao: 1, ssr: 1, sombra: 2048 },
+// dof: 0 en todos: el desenfoque sacaba de la escena (pedido de Andy). El código queda por si se quiere probar.
+  baja: { tope: 960, msaa: 0, radio: 2.2, dof: 0, ao: 0, ssr: 0, sombra: 512 },
+  media: { tope: 1440, msaa: 2, radio: 2.8, dof: 0, ao: 0, ssr: 1, sombra: 1024 },
+  alta: { tope: 1920, msaa: 4, radio: 3.2, dof: 0, ao: 1, ssr: 1, sombra: 2048 },
 };
 const ORDEN = ['baja', 'media', 'alta'];
 
@@ -27,10 +30,13 @@ const ORDEN = ['baja', 'media', 'alta'];
 // niebla: color del aire · ambO/ambL: cuánto brilla a oscuras / con luz
 // flash: cuánto la enciende el flash · dens: espesor · lavado: cuánto tiñe todo
 const PALETAS = {
-  base: { niebla: [.05, .14, .7], ambO: .012, ambL: .3, flash: .5, dens: .15, lavado: .3 }, // ultramar + el carmín de la salida
+  base: { niebla: [.05, .14, .7], ambO: .012, ambL: .3, flash: .5, dens: .15, lavado: .2, // ultramar + el carmín de la salida
+    cielo: { cenit: [.008, .02, .11], medio: [.11, .03, .24], horiz: [.8, .13, .1], corona: [1, .62, .3] } },
   horaPunta: { niebla: [1, .55, .22], ambO: .03, ambL: .75, flash: .3, dens: .11, lavado: .3 }, // ámbar de tarde
-  vagonEscolar: { niebla: [0, .6, .68], ambO: .015, ambL: .3, flash: .5, dens: .15, lavado: .34 }, // turquesa
-  vagonOficinista: { niebla: [.46, .14, .75], ambO: .015, ambL: .3, flash: .5, dens: .14, lavado: .34 }, // violeta
+  vagonEscolar: { niebla: [0, .6, .68], ambO: .015, ambL: .3, flash: .5, dens: .15, lavado: .22, // turquesa
+    cielo: { cenit: [0, .04, .08], medio: [0, .22, .28], horiz: [.12, .8, .72], corona: [1, .9, .6] } },
+  vagonOficinista: { niebla: [.46, .14, .75], ambO: .015, ambL: .3, flash: .5, dens: .14, lavado: .22, // violeta
+    cielo: { cenit: [.03, 0, .09], medio: [.26, .05, .42], horiz: [.95, .3, .55], corona: [1, .76, .9] } },
 };
 
 export function createGfx(ctx) {
@@ -97,7 +103,7 @@ export function createGfx(ctx) {
     R.retina = [];
   }
   function armar() {
-    const ancho = Math.max(480, Math.min(nivel.tope, (canvas.clientWidth || 1280) * Math.min(devicePixelRatio || 1, 1.5)));
+    const ancho = Math.max(480, Math.min(nivel.tope, (canvas.clientWidth || 1280) * Math.min(devicePixelRatio || 1, 2)));
     const w = Math.round(ancho * escala / 2) * 2;
     const h = Math.round(w / ASPECT / 2) * 2;
     if (w === W && h === H && R.escena && R.escena.samples === nivel.msaa) return;
@@ -142,6 +148,15 @@ export function createGfx(ctx) {
   let ms = 16; // milisegundos por frame (promedio)
   let reloj = 0;
   let espera = 0;
+
+  // ---------- el otro lado (lo que se ve por las ventanas a oscuras) ----------
+  const mundo = createMundo();
+  mundo.group.visible = false;
+  scene.add(mundo.group);
+  let tunel = [];
+  let abre = 0;
+  let primeraVez = true; // la primera vez que se corta la luz, el cielo se abre lento
+  let flashReciente = 0;
 
   // ---------- qué hay en escena ----------
   const refGeo = borradoGeometry();
@@ -210,6 +225,12 @@ export function createGfx(ctx) {
     if (!o.isMesh) return;
     const m = o.material;
     if (!m) return;
+    // el túnel de afuera (paredes, cables, piso): a oscuras se saca
+    const gp = o.geometry?.parameters;
+    if (gp && gp.depth && ((gp.width === .2 && gp.height === 6) || (gp.width === 9 && gp.depth === 30) || (gp.width === .08 && gp.depth === 2.6))) {
+      tunel.push(o);
+      return;
+    }
     if (!Array.isArray(m) && m.depthTest === false) {
       // celular y capa de pantalla: se dibujan después, encima del cuadro
       o.layers.set(1);
@@ -220,9 +241,18 @@ export function createGfx(ctx) {
     if (!lista.some((x) => x.isMeshStandardMaterial)) return;
     o.receiveShadow = true;
     o.castShadow = !lista[0].transparent;
+    if (lista[0].transparent && gp?.width === .04 && lista[0].fog) {
+      // vidrio de las ventanas: más limpio y sin niebla negra, para mirar hacia afuera
+      lista[0].fog = false;
+      lista[0].opacity = .2;
+      lista[0].needsUpdate = true;
+    }
     if (o.geometry?.attributes.position?.count === VERTS_BORRADO && lista[0].emissive) {
-      parcharBorrado(lista[0]);
-      if (o.isInstancedMesh) borrados = o;
+      // solo la multitud: el borrado del susto se ve de cerca y necesita su cara limpia
+      if (o.isInstancedMesh) {
+        parcharBorrado(lista[0]);
+        borrados = o;
+      }
     }
   }
 
@@ -232,6 +262,7 @@ export function createGfx(ctx) {
       vistos = new WeakSet();
       cuerpos = new Map();
       flashSpot = null;
+      tunel = [];
       borrados = null;
       overlayU = null;
       part.limpiar();
@@ -288,6 +319,8 @@ export function createGfx(ctx) {
       renderer.setRenderTarget(null);
       renderer.setSize(PS1.w, PS1.h, false);
       part.group.visible = false;
+      mundo.group.visible = false;
+      for (const t of tunel) t.visible = true;
     }
     camera.updateProjectionMatrix();
   }
@@ -362,6 +395,16 @@ export function createGfx(ctx) {
       const peso = Math.min(l.intensity, 2.5) / (1 + dist * .12) * (1 - THREE.MathUtils.smoothstep(borde, 1, 1.6));
       mejores.push({ x: v3.x * .5 + .5, y: v3.y * .5 + .5, z, peso, color: l.color });
     }
+    if (abre > .05) {
+      v3.copy(SOL).multiplyScalar(1000).add(camera.position).applyMatrix4(camera.matrixWorldInverse);
+      if (v3.z < -1) {
+        v3.applyMatrix4(camera.projectionMatrix);
+        const borde = Math.max(Math.abs(v3.x), Math.abs(v3.y));
+        const c = mundo.u.uCorona.value;
+        // z = casi el fondo: solo el cielo deja pasar el rayo; marcos, barras y siluetas lo cortan
+        if (borde < 1.8) mejores.push({ x: v3.x * .5 + .5, y: v3.y * .5 + .5, z: 190, peso: .85 * abre * (1 - THREE.MathUtils.smoothstep(borde, 1.1, 1.8)), color: { r: c.x, g: c.y, b: c.z } });
+      }
+    }
     mejores.sort((a, b) => b.peso - a.peso);
     for (let i = 0; i < 3; i++) {
       const b = mejores[i];
@@ -389,6 +432,31 @@ export function createGfx(ctx) {
     if (camera.aspect !== ASPECT) { camera.aspect = ASPECT; camera.updateProjectionMatrix(); }
     camera.updateMatrixWorld();
     camera.getWorldDirection(fwd);
+
+    // el otro lado: a oscuras no hay túnel, hay mundo
+    const exterior = enVagon && !encendido;
+    for (const t of tunel) t.visible = !exterior;
+    if (exterior) {
+      abre = Math.min(1, abre + dt / (primeraVez ? 5 : .7));
+      if (abre >= 1) primeraVez = false;
+    } else {
+      abre = 0;
+      if (encendido) primeraVez = true;
+    }
+    mundo.group.visible = abre > .001;
+    if (mundo.group.visible) {
+      const c = (PALETAS[ctx.fsm.current] || PALETAS.base).cielo || PALETAS.base.cielo;
+      const kc = Math.min(1, dt * 2);
+      const mu = mundo.u;
+      mu.uTime.value = tiempo;
+      mu.uAbre.value = abre * abre * (3 - 2 * abre);
+      mu.uCenit.value.lerp(v3.fromArray(c.cenit), kc);
+      mu.uMedio.value.lerp(v3.fromArray(c.medio), kc);
+      mu.uHoriz.value.lerp(v3.fromArray(c.horiz), kc);
+      mu.uCorona.value.lerp(v3.fromArray(c.corona), kc);
+      mundo.hojaU.uPx.value = H * camera.projectionMatrix.elements[5] * .5;
+    }
+    flashReciente = Math.max(Math.min(flash, 1), flashReciente - dt * 1.4);
 
     // luces y materiales
     if (flashSpot && flash > .01) flashSpot.shadow.needsUpdate = true;
@@ -526,13 +594,15 @@ export function createGfx(ctx) {
     O.uBruma.value = flash;
     O.uDens.value += (pal.dens - O.uDens.value) * k;
     F.uLavado.value += ((enVagon ? pal.lavado : 0) - F.uLavado.value) * k;
-    F.uBloom.value = .42 - lit * .2;
+    // al ser atrapado el bloom baja: la cara del susto tiene que leerse
+    F.uBloom.value = (.34 - lit * .14) * (1 - .75 * Math.min(1, overlayU?.uCaught?.value || 0));
+    F.uRaya.value = .16 + (primeraVez ? Math.sin(Math.PI * abre) * .6 : 0); // el cielo se enciende con un destello
     F.uRayos.value = enVagon ? .38 + lit * .22 + Math.min(flash, 1) * .4 : 0;
     F.uExpo.value = 1.25 - lit * .15 - Math.min(flash, 1) * .5; // la cámara cierra el diafragma con el flash
     F.uVirado.value = .8 + lit * .3;
     U.brillo.uUmbral.value = .82 + lit * .25;
-    F.uRetina.value = (1 - lit) * (GFX.calma ? .25 : .7);
-    F.uCA.value = GFX.calma ? 0 : .012;
+    F.uRetina.value = (1 - lit) * flashReciente * (GFX.calma ? .25 : .7); // solo después de un flash: girar no deja estela
+    F.uCA.value = GFX.calma ? 0 : .004;
     U.oleo.uTemblor.value = GFX.calma ? 0 : 2.2;
     F.uBarras.value = enVagon ? .055 : 0;
     pasada(M.final, null);
@@ -547,5 +617,6 @@ export function createGfx(ctx) {
     rafaga(p, n) { if (GFX.on) part.rafaga(p, n); },
   };
   ctx.gfx = api;
+  createEscenas(ctx);
   return api;
 }

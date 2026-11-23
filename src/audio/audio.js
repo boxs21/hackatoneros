@@ -210,6 +210,7 @@ function cambiarBucle(grupo, nombre, opts, actual) {
     // Intenta sonar de inmediato. Si el navegador lo bloquea (aún no hubo gesto
     // del jugador), suena en el primer click o tecla, sin esperar nada más.
     el.play().catch((err) => {
+      if (err?.name === 'AbortError') return; // la cortaron antes de partir (saltar de escena): no es un error
       if (err?.name !== 'NotAllowedError') { console.error(`[audio] no se pudo reproducir ${nombre}`, err); return; }
       alPrimerGesto(() => { if (!el.dataset.fin) el.play().catch((e) => console.error(`[audio] no se pudo reproducir ${nombre}`, e)); });
     });

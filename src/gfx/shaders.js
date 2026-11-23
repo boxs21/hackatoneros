@@ -33,8 +33,14 @@ vec3 comp(vec3 c) { return c / (1.0 + max3(c)); }
 void main() {
   float z = linZ(texture2D(tDepth, vUv).x);
   vec2 g = vUv * vec2(uAspect, 1.0);
-  vec2 uv = vUv + (vec2(vnoise(g * 70.0), vnoise(g * 70.0 + 19.0)) - 0.5) * uTexel * uTemblor;
-  float rad = uRadio * mix(0.4, 1.0, smoothstep(0.5, 4.5, z));
+  // de cerca, nítido: el óleo solo pinta lo que está lejos (y el cielo entero)
+  float lejos = smoothstep(3.0, 14.0, z);
+  vec2 uv = vUv + (vec2(vnoise(g * 70.0), vnoise(g * 70.0 + 19.0)) - 0.5) * uTexel * uTemblor * lejos;
+  float rad = uRadio * lejos;
+  vec3 r;
+  if (rad < 0.3) {
+    r = texture2D(tColor, vUv).rgb;
+  } else {
   vec3 m0 = vec3(0.0), m1 = vec3(0.0), m2 = vec3(0.0), m3 = vec3(0.0);
   vec3 s0 = vec3(0.0), s1 = vec3(0.0), s2 = vec3(0.0), s3 = vec3(0.0);
   for (int j = 0; j < 3; j++) {
@@ -55,11 +61,13 @@ void main() {
   float w1 = 1.0 / (1.0 + pow(4000.0 * (v1.r + v1.g + v1.b), 3.0));
   float w2 = 1.0 / (1.0 + pow(4000.0 * (v2.r + v2.g + v2.b), 3.0));
   float w3 = 1.0 / (1.0 + pow(4000.0 * (v3.r + v3.g + v3.b), 3.0));
-  vec3 r = (m0 * w0 + m1 * w1 + m2 * w2 + m3 * w3) / (w0 + w1 + w2 + w3);
+  r = (m0 * w0 + m1 * w1 + m2 * w2 + m3 * w3) / (w0 + w1 + w2 + w3);
   r = r / max(1.0 - max3(r), 0.02);
+  }
   // bruma de color: el aire del vagón tiene un tono por momento. Lo cercano
   // queda en silueta contra el fondo; el haz del flash la enciende.
-  float f = 1.0 - exp(-z * uDens);
+  // la bruma es del aire del vagón: al cielo de afuera no lo toca
+  float f = (1.0 - exp(-z * uDens)) * (1.0 - smoothstep(22.0, 40.0, z));
   vec3 tinte = uNiebla / max(max3(uNiebla), 0.001);
   float cono = smoothstep(0.62, 0.0, length((vUv - 0.5) * vec2(uAspect, 1.0)));
   vec3 haz = mix(vec3(1.0, 0.94, 0.82), tinte, 0.5) * uBruma * cono * uNieblaFlash;
