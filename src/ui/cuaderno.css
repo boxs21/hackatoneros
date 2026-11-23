@@ -1,0 +1,32 @@
+/* Hoja de cuaderno a la derecha: papel con líneas, número escrito a mano */
+.cuaderno {
+  position: absolute; right: 3.5%; top: 35%; width: clamp(115px, 14vw, 180px);
+  padding: 10px 14px 10px 26px; color: #23314f;
+  background:
+    linear-gradient(90deg, transparent 18px, rgba(200, 60, 60, .55) 18px, rgba(200, 60, 60, .55) 19.5px, transparent 19.5px),
+    repeating-linear-gradient(180deg, #f1ead6 0, #f1ead6 calc(1.75em - 1px), rgba(70, 110, 170, .35) calc(1.75em - 1px), rgba(70, 110, 170, .35) 1.75em);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .55); border-radius: 2px;
+  font-family: "Bradley Hand", "Segoe Print", "Marker Felt", "Comic Sans MS", cursive;
+  font-size: clamp(12px, 1.4vw, 17px); line-height: 1.75em;
+  transform: translateX(130%) rotate(2.5deg); opacity: 0; pointer-events: none;
+  transition: transform .45s cubic-bezier(.2, 1.2, .4, 1), opacity .3s;
+}
+.cuaderno.on { transform: translateX(0) rotate(2.5deg); opacity: .96; }
+.cuaderno.apoyo { top: 26%; }
+.cuaderno .cu-tit { font-weight: 700; text-decoration: underline; letter-spacing: .04em; }
+.cuaderno .cu-fila { display: flex; gap: 14px; align-items: baseline; }
+.cuaderno .cu-rom { width: 2.2em; color: #7a8090; }
+.cuaderno .cu-num { position: relative; font-size: 1.7em; font-weight: 700; line-height: 1; min-width: 1em; }
+.cuaderno .cu-num:empty::before { content: "?"; color: rgba(35, 49, 79, .3); }
+.cuaderno .cu-pie { font-size: .7em; color: #7a8090; line-height: 1.6; margin-top: 2px; }
+/* el número se escribe: se descubre de izquierda a derecha, con el lápiz al lado */
+.cuaderno .cu-fila.nuevo .cu-num { animation: cu-escribe .9s steps(9) both; }
+.cuaderno .cu-fila.nuevo .cu-num::after {
+  content: "✎"; position: absolute; left: 100%; top: -.1em; font-size: .7em; color: #5a4a2a;
+  animation: cu-lapiz .9s ease-out both;
+}
+@keyframes cu-escribe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes cu-lapiz { 0% { opacity: 1; transform: translate(-1.1em, .2em) rotate(-10deg); } 80% { opacity: 1; transform: translate(0, -.1em) rotate(8deg); } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .cuaderno, .cuaderno .cu-fila.nuevo .cu-num, .cuaderno .cu-fila.nuevo .cu-num::after { transition: none; animation: none; }
+}

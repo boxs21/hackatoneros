@@ -21,6 +21,7 @@ import { setupVagon, walkVagon } from '../world/vagonEscena.js';
 import { createObjeto, borradoGeometry } from '../world/figura.js';
 import { createScare, caughtFrame } from '../world/susto.js';
 import { VAGON } from '../world/vagon.js';
+import { createCuaderno } from '../ui/cuaderno.js';
 
 const L = [0, Math.PI / 2, 0];
 const R = [0, -Math.PI / 2, 0];
@@ -146,7 +147,9 @@ export default {
     lurker.visible = false;
     ctx.stage.add(lurker);
     S.lurk = { group: lurker, eyeMat, dist: 8.5, state: retry ? 'done' : 'wait', lastOn: -9, prevOn: 0 };
-    if (retry) ctx.hud.subtitle(`Cuaderno: ${notebook(S)}`, 3000);
+    // El cuaderno: los números que vas fotografiando se anotan a mano (ui/cuaderno.js).
+    S.cuaderno = createCuaderno(document.getElementById('hud'), { code, seen });
+    if (retry && seen.some(Boolean)) S.cuaderno.mostrar(3200);
 
     S.flash = createFlash({
       onFire(count) {
@@ -211,18 +214,19 @@ export default {
       cam.updateMatrixWorld();
       S.m.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
       S.frustum.setFromProjectionMatrix(S.m);
-      let found = false;
+      const nuevos = [];
       for (const d of S.decals) {
         if (d.code < 0 || S.seen[d.code]) continue;
         if (cam.position.distanceTo(d.mesh.position) < 8.5 && S.frustum.containsPoint(d.mesh.position)) {
           S.seen[d.code] = true;
-          found = true;
+          nuevos.push(d.code);
         }
       }
-      if (found) {
+      if (nuevos.length) {
         if (S.msg === 1) S.msgAt = S.t + 3.5;
-        ctx.audio.sfx('notificacion');
-        ctx.hud.subtitle(`Cuaderno: ${notebook(S)}`, 3200);
+        ctx.audio.sfx('ui', { volume: .6 }); // lápiz
+        // se anotan uno tras otro si la foto pilló más de uno
+        nuevos.forEach((i, k) => setTimeout(() => S?.cuaderno.anotar(i), k * 700));
         ctx.progress();
       }
     }
@@ -247,6 +251,8 @@ export default {
 
     // teclado: apuntar con la mira
     let hover = -1;
+    // en el teclado, el cuaderno queda a la derecha como apoyo
+    S.cuaderno.fijar(cam.position.distanceTo(pad.panel.position) < 3.2 && !S.done);
     if (cam.position.distanceTo(pad.panel.position) < 2.3 && !S.done) {
       S.ray.setFromCamera(S.center, cam);
       const hit = S.ray.intersectObject(pad.panel)[0];
@@ -298,15 +304,13 @@ export default {
   },
   exit(ctx) {
     if (!S) return;
+    S.cuaderno?.destroy();
     S.scene.dispose();
     ctx.canvas.removeEventListener('mousedown', S.onDown);
     S = null;
   },
 };
 
-function notebook(S) {
-  return ['I', 'II', 'III'].map((n, i) => `${n}: ${S.seen[i] ? S.code[i] : '?'}`).join('   ');
-}
 
 // "Algo se acerca con el tubo": en cada pulso de luz aparece más cerca, frente a ti.
 // Seguridad: los pulsos los maneja el tubo (lentos); los ojos solo se apagan.
