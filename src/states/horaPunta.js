@@ -145,7 +145,10 @@ export default {
     S.titleUntil = 4.4;
     // Partes sin nada: el celular (y lo demás) te lo van pasando los cuatro.
     mostrarRegalos(ctx, { reiniciar: true });
+    // Antes del apagón se ve NORMAL: sin celular en la mano, sin flash y sin bordes
+    // de cámara. La cámara del celular recién aparece después del apagón (Los cinco).
     scene.celular.group.visible = false;
+    scene.overlay.u.uVig.value = 0;
     INTRO.forEach((text) => S.queue.push({ text }));
     S.queue[0].delay = CINE + .3;
     ctx.audio.ambiente('vagon');
@@ -244,8 +247,7 @@ export default {
       cam.rotation.y += diff * Math.min(1, dt * .9);
     }
 
-    if (ctx.input.pressed('KeyF') && tiene(ctx, 'celular')) flash.fire(now);
-    scene.light(flash.level(now), dt, flash);
+    scene.light(flash.level(now), dt, flash); // sin flash en hora punta: se ve normal
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .6;
 
     // ---- conocer al pasajero que toca (en orden, por cercanía)
@@ -364,7 +366,6 @@ function entregar(ctx, pasajero) {
     onStart: () => {
       pasajero.armR.rotation.x = 0;
       dar(ctx, pasajero.name);
-      if (r.id === 'celular') S.scene.celular.group.visible = true;
     },
     onEnd: () => nextBeat(ctx),
   });
