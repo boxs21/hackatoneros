@@ -19,39 +19,74 @@ float vnoise(vec2 p) {
   return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
 }`;
 
-// 1 · Óleo: filtro de Kuwahara (4 cuadrantes, 9 muestras cada uno). Aplana el
-// color en manchas y respeta los bordes, como pinceladas. De cerca conserva
-// detalle; al fondo se vuelve pintura. El "temblor" mueve apenas el trazo.
+// 1a · Dirección del trazo: tensor de estructura a media resolución. Guarda
+// gx², gx·gy y gy² del brillo (ya comprimido, para que el cielo HDR no mande).
+// El óleo lo lee suavizado y saca de ahí hacia dónde corre la pincelada.
+export const TENSOR = /* glsl */ `
+${COMUN}
+uniform sampler2D tColor;
+uniform vec2 uTexel; // texel de la imagen de origen (resolución completa)
+float lum(vec2 uv) { vec3 c = texture2D(tColor, uv).rgb; return dot(c / (1.0 + max3(c)), vec3(0.3, 0.55, 0.15)); }
+void main() {
+  vec2 h = uTexel * 1.5; // muestras entre píxeles: el filtro lineal ya promedia
+  float a = lum(vUv + vec2(-h.x, -h.y)), b = lum(vUv + vec2(0.0, -h.y)), c = lum(vUv + vec2(h.x, -h.y));
+  float d = lum(vUv + vec2(-h.x, 0.0)), f = lum(vUv + vec2(h.x, 0.0));
+  float g = lum(vUv + vec2(-h.x, h.y)), i = lum(vUv + vec2(0.0, h.y)), k = lum(vUv + vec2(h.x, h.y));
+  float gx = (c + 2.0 * f + k) - (a + 2.0 * d + g);
+  float gy = (g + 2.0 * i + k) - (a + 2.0 * b + c);
+  gl_FragColor = vec4(gx * gx, gx * gy, gy * gy, 1.0);
+}`;
+
+// 1b · Óleo: Kuwahara anisotrópico. Cuatro cuadrantes (9 muestras cada uno)
+// girados según la dirección de la forma y estirados a lo largo de ella: la
+// pincelada sigue los bordes en vez de escalonarlos, y cada lado de un borde
+// se pinta por separado (el marco no se mezcla con el cielo). Nada de ruido
+// pegado a la pantalla: el trazo sale solo de la imagen, así que al girar la
+// cámara las pinceladas viajan con lo que pintan.
 export const OLEO = /* glsl */ `
 ${COMUN}
-uniform sampler2D tColor, tDepth;
-uniform vec2 uTexel;
-uniform float uRadio, uTemblor, uAspect, uCerca;
+uniform sampler2D tColor, tDepth, tTensor;
+uniform vec2 uTexel, uTexelT;
+uniform float uRadio, uAspect, uCerca, uEstira;
 uniform vec3 uNiebla;
 uniform float uNieblaAmb, uNieblaFlash, uDens, uBruma;
 vec3 comp(vec3 c) { return c / (1.0 + max3(c)); }
 void main() {
   float z = linZ(texture2D(tDepth, vUv).x);
-  vec2 g = vUv * vec2(uAspect, 1.0);
   // de cerca, nítido: el óleo solo pinta lo que está lejos (y el cielo entero)
   // uCerca: cuánta pincelada queda de cerca (0 = nítido, 1 = todo óleo)
   float lejos = mix(uCerca, 1.0, smoothstep(3.0, 14.0, z));
-  vec2 uv = vUv + (vec2(vnoise(g * 70.0), vnoise(g * 70.0 + 19.0)) - 0.5) * uTexel * uTemblor * lejos;
   float rad = uRadio * lejos;
   vec3 r;
   if (rad < 0.3) {
     r = texture2D(tColor, vUv).rgb;
   } else {
+  // tensor suavizado (cinco lecturas lineales cubren unos 9x9 píxeles)
+  vec2 e = uTexelT * 1.5;
+  vec3 T = texture2D(tTensor, vUv).xyz * 0.4
+    + (texture2D(tTensor, vUv + vec2(e.x, e.y)).xyz + texture2D(tTensor, vUv - vec2(e.x, e.y)).xyz
+     + texture2D(tTensor, vUv + vec2(e.x, -e.y)).xyz + texture2D(tTensor, vUv - vec2(e.x, -e.y)).xyz) * 0.15;
+  float D = sqrt((T.x - T.z) * (T.x - T.z) + 4.0 * T.y * T.y);
+  float l1 = 0.5 * (T.x + T.z + D), l2 = 0.5 * (T.x + T.z - D);
+  vec2 t = vec2(l1 - T.x, -T.y); // a lo largo del borde (donde el color cambia menos)
+  float lt = length(t);
+  t = lt > 1e-8 ? t / lt : vec2(1.0, 0.0);
+  // anisotropía: 0 en zonas planas (trazo redondo), 1 en un borde limpio.
+  // El 0.0004 evita que un degradé casi plano decida la dirección y tirite.
+  float A = (l1 - l2) / (l1 + l2 + 0.0004);
+  float sa = 1.0 + A * uEstira;
+  vec2 du = t * rad * 0.5 * sa * uTexel;               // a lo largo
+  vec2 dv = vec2(-t.y, t.x) * rad * 0.5 / sa * uTexel; // a través
   vec3 m0 = vec3(0.0), m1 = vec3(0.0), m2 = vec3(0.0), m3 = vec3(0.0);
   vec3 s0 = vec3(0.0), s1 = vec3(0.0), s2 = vec3(0.0), s3 = vec3(0.0);
   for (int j = 0; j < 3; j++) {
     for (int i = 0; i < 3; i++) {
-      vec2 o = vec2(float(i), float(j)) * rad * 0.5 * uTexel;
+      vec2 ou = du * float(i), ov = dv * float(j);
       vec3 c;
-      c = comp(texture2D(tColor, uv + vec2(-o.x, -o.y)).rgb); m0 += c; s0 += c * c;
-      c = comp(texture2D(tColor, uv + vec2(o.x, -o.y)).rgb); m1 += c; s1 += c * c;
-      c = comp(texture2D(tColor, uv + vec2(-o.x, o.y)).rgb); m2 += c; s2 += c * c;
-      c = comp(texture2D(tColor, uv + vec2(o.x, o.y)).rgb); m3 += c; s3 += c * c;
+      c = comp(texture2D(tColor, vUv - ou - ov).rgb); m0 += c; s0 += c * c;
+      c = comp(texture2D(tColor, vUv + ou - ov).rgb); m1 += c; s1 += c * c;
+      c = comp(texture2D(tColor, vUv - ou + ov).rgb); m2 += c; s2 += c * c;
+      c = comp(texture2D(tColor, vUv + ou + ov).rgb); m3 += c; s3 += c * c;
     }
   }
   m0 /= 9.0; m1 /= 9.0; m2 /= 9.0; m3 /= 9.0;
@@ -98,24 +133,40 @@ void main() {
 
   if (uDof > 0.0) {
     float foco = texture2D(tFoco, vec2(0.5)).r;
-    float c0 = abs(coc(z, foco));
-    float r = c0 * uMaxBlur;
-    if (r > 0.6) {
-      vec3 acc = col;
-      float tot = 1.0;
+    float rc = abs(coc(z, foco)) * uMaxBlur;
+    // ¿hay algo adelante y desenfocado cerca? Su borde se derrama sobre este
+    // píxel aunque este esté nítido (un marco borroso contra el cielo).
+    float rs = rc;
+    for (int i = 0; i < 6; i++) {
+      float a = float(i) * 1.0472;
+      float pz = linZ(texture2D(tDepth, vUv + vec2(cos(a), sin(a)) * uMaxBlur * 0.6 * uTexel).x);
+      if (pz < z - 0.15) rs = max(rs, abs(coc(pz, foco)) * uMaxBlur);
+    }
+    if (rs > 0.6) {
+      // dos capas: el fondo (este píxel y lo que está a su altura o detrás,
+      // que no puede meterse sobre algo más nítido que él) y lo de adelante,
+      // que tapa en la medida en que su propio desenfoque alcanza este píxel.
+      vec3 fondo = col, frente = vec3(0.0);
+      float wf = 1.0, wd = 0.0;
       for (int i = 0; i < 16; i++) {
         float fi = float(i) + 0.5;
-        float ri = sqrt(fi / 16.0) * r;
+        float ri = sqrt(fi / 16.0) * rs;
         float a = fi * 2.39996;
         vec2 uv = vUv + vec2(cos(a), sin(a)) * ri * uTexel;
         float sz = linZ(texture2D(tDepth, uv).x);
         float sc = abs(coc(sz, foco)) * uMaxBlur;
-        // lo que está detrás siempre aporta; lo de adelante solo si su propio desenfoque llega
-        float w = sz > z - 0.15 ? 1.0 : clamp(sc / max(ri, 0.001), 0.0, 1.0);
-        acc += texture2D(tColor, uv).rgb * w;
-        tot += w;
+        vec3 c = texture2D(tColor, uv).rgb;
+        if (sz < z - 0.15) {
+          float w = clamp(sc - ri + 0.5, 0.0, 1.0);
+          frente += c * w;
+          wd += w;
+        } else {
+          float w = clamp(min(sc, rc) - ri + 0.5, 0.0, 1.0);
+          fondo += c * w;
+          wf += w;
+        }
       }
-      col = acc / tot;
+      col = mix(fondo / wf, frente / max(wd, 1e-4), clamp(wd / 16.0 * 1.6, 0.0, 1.0));
     }
   }
 
@@ -320,9 +371,12 @@ void main() {
   col *= 1.0 + ((tela - 0.5) * 0.06 + (mancha - 0.5) * 0.06) * uTela * smoothstep(0.0, 0.25, l);
 
   col *= 1.0 - smoothstep(0.25, 0.95, r2 * 2.6) * 0.55;
-  col += (hash(gl_FragCoord.xy + fract(uTime) * 91.0) - 0.5) / 255.0 * 1.5;
   col *= step(uBarras, vUv.y) * step(vUv.y, 1.0 - uBarras);
-  gl_FragColor = vec4(srgb(max(col, 0.0)), 1.0);
+  // tramado contra el bandeado, ya en sRGB: medio escalón de 8 bits. Antes iba
+  // en luz lineal y en las sombras la curva lo agrandaba unas 13 veces: lo oscuro hervía.
+  vec3 s = srgb(max(col, 0.0));
+  s += (hash(gl_FragCoord.xy + fract(uTime * 7.0) * 91.0) + hash(gl_FragCoord.yx + fract(uTime * 3.0) * 57.0) - 1.0) / 255.0;
+  gl_FragColor = vec4(s, 1.0);
 }`;
 
 // Polvo en el aire: puntos que solo brillan dentro del haz del flash (o con el
