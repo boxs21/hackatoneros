@@ -355,6 +355,7 @@ export function createMuertes(ctx) {
         p.armL.rotation.x = -2.5 + Math.sin(t * 29) * .6;
         p.armR.rotation.x = -2.5 + Math.cos(t * 33) * .6;
         killer.rotation.z = Math.sin(t * 40) * .04;
+        p.mixer?.update(dt * 6); // con modelo 3D: su animación acelerada, como pataleo
       } else if (t < tImpacto) {
         // lanzado contra el vidrio
         if (!c.lanzado) {
