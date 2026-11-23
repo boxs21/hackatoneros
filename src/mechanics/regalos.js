@@ -7,28 +7,28 @@ export const REGALOS = {
     nombre: 'Llavero con luz',
     de: 'del escolar',
     uso: 'alumbra tus pies a oscuras',
-    linea: 'ESCOLAR: Tome, mi llavero con luz. Es pa’ no perderse… yo tengo otro.',
+    linea: 'ESCOLAR: Tome mi llavero con luz. Pa’ no perderse.',
   },
   Oficinista: {
     id: 'celular',
     nombre: 'Celular',
     de: 'del oficinista',
     uso: '[F] flash',
-    linea: 'OFICINISTA: ¿Me tiene el celular un ratito? Úselo no más, tiene linterna.',
+    linea: 'OFICINISTA: ¿Me tiene el celular? Tiene linterna.',
   },
   Señora: {
     id: 'estampita',
     nombre: 'Estampita',
     de: 'de la señora',
     uso: 'te salva una vez',
-    linea: 'SEÑORA: Llévese esta estampita, mijo. A mí siempre me ha cuidado.',
+    linea: 'SEÑORA: Llévese esta estampita, mijo. A mí me cuida.',
   },
   Vendedor: {
     id: 'chocolate',
     nombre: 'Chocolate',
     de: 'del vendedor',
     uso: '[E] tirarlo para que se alejen',
-    linea: 'VENDEDOR: Tome igual, este va por la casa. Guárdelo pa’ cuando lo necesite.',
+    linea: 'VENDEDOR: Tome igual, este va por la casa.',
   },
 };
 
