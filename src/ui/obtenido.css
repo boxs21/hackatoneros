@@ -12,7 +12,11 @@
 /* el sprite con rayos girando detrás */
 .ob-icon { position: relative; display: grid; place-items: center; width: 22cqh; height: 22cqh; }
 .ob-icon canvas { position: relative; width: 16cqh; height: 16cqh; image-rendering: pixelated; filter: drop-shadow(0 .8cqh 0 rgba(0, 0, 0, .55)); }
-.ob.on .ob-icon canvas { animation: ob-pop .5s cubic-bezier(.2, 1.8, .4, 1) .08s both, ob-bob 1.4s ease-in-out .6s infinite; }
+/* 3D: más grande, la animación la hace el modelo; el sprite 2D queda de respaldo */
+.ob-icon .ob-3d { display: none; width: 26cqh; height: 26cqh; }
+.ob.tres .ob-3d { display: block; }
+.ob.tres .ob-2d { display: none; }
+.ob.on .ob-icon .ob-2d { animation: ob-pop .5s cubic-bezier(.2, 1.8, .4, 1) .08s both, ob-bob 1.4s ease-in-out .6s infinite; }
 .ob-rays {
   position: absolute; inset: -6cqh; border-radius: 50%;
   background: repeating-conic-gradient(rgba(242, 183, 5, .32) 0 10deg, transparent 10deg 30deg);

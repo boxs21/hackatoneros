@@ -32,7 +32,7 @@ export function createCamara(root) {
       <div class="cam-tr"><span class="cam-low">BATERÍA BAJA</span><span class="cam-pct"></span><span class="cam-batt"><span></span></span></div>
       <div class="cam-bl"><span class="cam-date"></span><span class="cam-time"></span></div>
       <div class="cam-br">
-        <div class="cam-photo"><canvas width="64" height="48"></canvas><small></small></div>
+        <div class="cam-photo"><canvas width="160" height="120"></canvas><small></small></div>
         <span class="cam-shots"></span><span class="cam-fl">FLASH</span><span class="cam-bar"><i></i></span><span class="cam-flash">F</span>
       </div>
       <div class="cam-cross"></div>
@@ -89,6 +89,24 @@ export function createCamara(root) {
 
   // Estado por frame que viene de las escenas de Camilo.
   let prev = { ready: null, hot: null, count: -1, photo: null, lie: null, bar: -1 };
+  // La foto es el cuadro real del juego en el momento del flash: se copia el
+  // canvas del juego en un microtask, que corre justo después de que main.js
+  // dibuja este cuadro (sin preserveDrawingBuffer el canvas se borra después).
+  const pg = photoCanvas.getContext('2d');
+  let shot = 0; // número de la última foto capturada
+  let gameCanvas = null;
+  function capturar(n) {
+    queueMicrotask(() => {
+      try {
+        gameCanvas ||= document.getElementById('game');
+        if (!gameCanvas) return;
+        revelar(pg, gameCanvas);
+        shot = n;
+      } catch (err) {
+        console.error('[camara] foto', err);
+      }
+    });
+  }
   let noiseT = 0;
   let last = performance.now();
   function frame({ since = 9, ready = true, hot = false, count = 0, danger = 0, lie = false } = {}) {
@@ -103,10 +121,16 @@ export function createCamara(root) {
     if (bar !== prev.bar) { barEl.style.width = `${bar}%`; prev.bar = bar; }
     if (count !== prev.count) { shotsEl.textContent = `FOTOS ${count}`; prev.count = count; }
 
+    // foto nueva: se captura con la luz del flash encendida, pasado el destello blanco
+    // inicial (el primer cuadro después de disparar a veces tarda más de 120 ms)
+    if (count < shot) shot = 0; // escena nueva o reinicio: el contador del flash parte de 0
+    if (count > shot && since >= 0.08 && since < 0.6) capturar(count);
+
     const photo = since >= 0.13 && since < 1.8;
     if (photo !== prev.photo || (photo && lie !== prev.lie)) {
       if (photo) {
-        drawPhoto(photoCanvas.getContext('2d'), lie);
+        if (shot !== count) drawPhoto(pg, false); // no alcanzó a capturar: respaldo
+        if (lie) dibujarPegado(pg);
         photoLabel.textContent = `FOTO ${count}`;
       }
       photoBox.classList.toggle('on', photo);
@@ -157,9 +181,39 @@ export function createCamara(root) {
   return instance;
 }
 
-// La foto recién sacada: gente gris que no debería estar ahí.
-// Con lie (idea de Camilo), alguien pegado al lente con los ojos negros.
-function drawPhoto(g, lie) {
+// Revela la foto: el cuadro del juego con look de foto con flash de celular
+// (centro quemado, bordes que caen a negro, un poco de grano) y la fecha.
+function revelar(g, src) {
+  const W = 160;
+  const H = 120;
+  g.save();
+  g.filter = 'contrast(1.12) saturate(.9)';
+  g.drawImage(src, 0, 0, W, H);
+  g.filter = 'none';
+  // flash directo: centro más claro, esquinas oscuras
+  const hot = g.createRadialGradient(W * .5, H * .48, 4, W * .5, H * .5, W * .62);
+  hot.addColorStop(0, 'rgba(255,248,230,.1)');
+  hot.addColorStop(.45, 'rgba(255,248,230,0)');
+  hot.addColorStop(1, 'rgba(0,0,0,.7)');
+  g.fillStyle = hot;
+  g.fillRect(0, 0, W, H);
+  // grano
+  for (let i = 0; i < 260; i++) {
+    g.fillStyle = Math.random() < .5 ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.12)';
+    g.fillRect(Math.random() * W, Math.random() * H, 1, 1);
+  }
+  // fecha naranja de cámara barata
+  g.font = 'bold 9px ui-monospace, Menlo, monospace';
+  g.fillStyle = '#ff9a2e';
+  g.textAlign = 'right';
+  g.fillText(new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false }), W - 5, H - 5);
+  g.restore();
+}
+
+// Respaldo si no se pudo copiar el cuadro: gente gris que no debería estar ahí.
+function drawPhoto(g) {
+  g.save();
+  g.scale(2.5, 2.5);
   g.fillStyle = '#2a2b2f';
   g.fillRect(0, 0, 64, 48);
   g.fillStyle = '#8d8e93';
@@ -167,15 +221,20 @@ function drawPhoto(g, lie) {
     g.fillRect(x, 46 - h, 5, h);
     g.fillRect(x - 1, 46 - h - 6, 7, 6);
   }
-  if (lie) {
-    g.fillStyle = '#9a9ba0';
-    g.fillRect(18, 4, 30, 44);
-    g.fillRect(14, 14, 4, 34);
-    g.fillStyle = '#050505';
-    g.fillRect(22, 16, 7, 7);
-    g.fillRect(37, 16, 7, 7);
-    g.fillRect(28, 32, 10, 10);
-  }
-  g.fillStyle = '#e4322b';
-  g.fillRect(3, 3, 3, 3);
+  g.restore();
+}
+
+// La foto que miente (idea de Camilo): alguien pegado al lente, con los ojos negros.
+function dibujarPegado(g) {
+  g.save();
+  g.scale(2.5, 2.5);
+  g.globalAlpha = .92;
+  g.fillStyle = '#9a9ba0';
+  g.fillRect(18, 4, 30, 44);
+  g.fillRect(14, 14, 4, 34);
+  g.fillStyle = '#050505';
+  g.fillRect(22, 16, 7, 7);
+  g.fillRect(37, 16, 7, 7);
+  g.fillRect(28, 32, 10, 10);
+  g.restore();
 }

@@ -68,7 +68,7 @@
   opacity: 0; transform: translateY(2cqh) scale(.9); transition: opacity .12s, transform .2s cubic-bezier(.2, 1.6, .4, 1);
 }
 .cam-photo.on { opacity: 1; transform: none; }
-.cam-photo canvas { width: 22cqh; height: 16.5cqh; image-rendering: pixelated; border: .6cqh solid var(--osd); box-shadow: 0 .6cqh 0 rgba(0, 0, 0, .6); }
+.cam-photo canvas { width: 32cqh; height: 24cqh; image-rendering: pixelated; border: .6cqh solid var(--osd); box-shadow: 0 .6cqh 0 rgba(0, 0, 0, .6); }
 .cam-photo small { font-size: 2.6cqh; }
 
 /* Mensajes (pistas): entran con fuerza arriba al centro */

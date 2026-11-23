@@ -1,9 +1,10 @@
 import './obtenido.css';
+import { createObjeto3d, tipoDe } from './objeto3d.js';
 
 // OBJETO OBTENIDO. Dueño: Renato.
 // Cada vez que te dan algo (ctx.hud.obtenido(nombre, uso)) sale al centro de la
-// pantalla: destello, rayos girando detrás, el sprite en pixel art que salta y
-// flota, «¡OBTUVISTE!», el nombre y para qué sirve. Se va solo.
+// pantalla: destello, rayos girando detrás, el objeto en 3D (ui/objeto3d.js)
+// que entra girando y flota, «¡OBTUVISTE!», el nombre y para qué sirve. Se va solo.
 
 // Sprites de 16x16 dibujados a mano. '.' = transparente.
 const SPRITES = {
@@ -141,19 +142,28 @@ export function createObtenido(root, { audio } = {}) {
   el.setAttribute('role', 'status');
   el.innerHTML = `
     <div class="ob-card">
-      <div class="ob-icon"><i class="ob-rays"></i><canvas width="16" height="16"></canvas></div>
+      <div class="ob-icon"><i class="ob-rays"></i><canvas class="ob-3d"></canvas><canvas class="ob-2d" width="16" height="16"></canvas></div>
       <small class="ob-kicker">¡Obtuviste!</small>
       <b class="ob-name"></b>
       <span class="ob-use"></span>
     </div>`;
   root.append(el);
-  const g = el.querySelector('canvas').getContext('2d');
+  const g = el.querySelector('.ob-2d').getContext('2d');
+  // 3D si se puede; si WebGL falla, queda el sprite 2D de respaldo
+  let obj3d = null;
+  try {
+    obj3d = createObjeto3d(el.querySelector('.ob-3d'));
+    el.classList.add('tres');
+  } catch (err) {
+    console.error('[obtenido] 3D', err);
+  }
   const nameEl = el.querySelector('.ob-name');
   const useEl = el.querySelector('.ob-use');
   let timer = 0;
 
   function hide() {
     clearTimeout(timer);
+    obj3d?.stop();
     el.classList.remove('on', 'out');
   }
 
@@ -167,6 +177,7 @@ export function createObtenido(root, { audio } = {}) {
         hide();
         void el.offsetWidth; // reinicia la animación
         el.classList.add('on');
+        obj3d?.show(tipoDe(nombre));
         audio?.sfx?.('ui');
         timer = setTimeout(() => {
           el.classList.add('out');
