@@ -20,3 +20,7 @@ EFECTOS, AMBIENTES Y MÚSICA (opcional, solo si se quiere reemplazar uno):
 
 Para grabar: celular pegado a la boca, pieza sin eco, exportar en mono.
 Nada de sonidos oficiales de Metro de Santiago.
+
+MÚSICA LARGA (carpeta musica/):
+  Lo que esté en public/audio/musica/ se reproduce directo, sin cargarse entero en memoria.
+  musica/menu.mp3  ->  ctx.audio.musica('menu')   ("Before the City Wakes", pantalla de inicio)

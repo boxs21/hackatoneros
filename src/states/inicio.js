@@ -1,20 +1,17 @@
-// 1 · Pantalla de inicio. Dueño: Valentín (look: Renato).
-// El primer click desbloquea el audio y captura el mouse (requisito del navegador).
+// 1 · Pantalla de inicio. Dueño: Valentín (menú: Andy, en src/menu/).
+// El primer gesto del jugador desbloquea el audio; "Comenzar" captura el mouse
+// (los dos son requisitos del navegador) y pasa a hora punta.
+import { abrirMenu } from '../menu/menu.js';
+
 export default {
   id: 'inicio',
   next: 'horaPunta',
   enter(ctx) {
-    ctx.hud.title('FIN DE SERVICIO', 'Haz click para empezar · se recomiendan audífonos');
-    this.onClick = async () => {
-      await ctx.audio.unlock();
-      ctx.input.lockPointer();
-      ctx.next();
-    };
-    ctx.canvas.addEventListener('click', this.onClick, { once: true });
+    this.menu = abrirMenu(ctx, { alComenzar: () => ctx.next() });
   },
   update() {},
-  exit(ctx) {
-    ctx.canvas.removeEventListener('click', this.onClick);
-    ctx.hud.title('');
+  exit() {
+    this.menu?.cerrar();
+    this.menu = null;
   },
 };
