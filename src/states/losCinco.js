@@ -12,6 +12,7 @@ import { createFlash } from '../mechanics/flash.js';
 import { dar, mostrarRegalos, tiene } from '../mechanics/regalos.js';
 import { createPasajeros, updatePasajeros } from '../world/pasajeros.js';
 import { setupVagon, walkVagon } from '../world/vagonEscena.js';
+import { crearCalcetin } from '../world/calcetin.js';
 
 const CHARLA = [
   [1.0, 'OFICINISTA: ¿Están todos bien?'],
@@ -40,6 +41,8 @@ export default {
     ctx.stage.add(fondo.mesh);
 
     S = { scene, passengers, fondo, t: 0, lines: [...CHARLA], step: 'charla', stepAt: 0, flashes: 0, ended: false };
+    // Ingrediente obligatorio: guiño a 31 Minutos (world/calcetin.js).
+    S.calcetin = crearCalcetin(ctx, { x: 1.55, z: 10.4 });
     if (ctx.demo) window.__S = S;
     S.flash = createFlash({
       onFire(n) {
@@ -104,6 +107,7 @@ export default {
     // moverse poco: estás con ellos
     walkVagon(dt, ctx, { speed: 1.4, minZ: 9.4, maxZ: 12.4, colliders: passengers.map((p) => ({ x: p.x, z: p.z, r: .25 })) });
     updatePasajeros(passengers, dt, cam);
+    S.calcetin.update(dt, ctx);
 
     if (!S.ended && ctx.input.pressed('KeyF') && S.step !== 'charla') flash.fire(now);
     const level = ctx.demo && window.__fdsHold ? 1 : flash.level(now);
