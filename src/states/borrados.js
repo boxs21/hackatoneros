@@ -39,7 +39,7 @@ export default {
     crowd.face(ctx.camera.position);
 
     S = { scene, passengers, crowd, scare, muertes, llavero, retry, vanished: 0, t: 0, bestZ: 11,
-      caught: -1, done: false, doorMsg: -9, intro: retry ? 99 : 0, lastLie: -99, rule: null };
+      caught: -1, done: false, doorMsg: -9, intro: retry || data.desdeCinco ? 99 : 0, /* desde Los cinco ya conoces el flash */ lastLie: -99, rule: null };
     if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
 
     if (retry) {
