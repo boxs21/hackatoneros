@@ -4,7 +4,7 @@
 
 Juego corto de terror suave en primera persona, ambientado en un vagón de metro de Santiago a la hora punta. Hecho en un día para la hackathon **Build Games with Codex** (Santiago, 23 de noviembre de 2026), parte del UDDevs Game Fest 2026.
 
-**▶ Jugar en el navegador:** https://<USUARIO>.github.io/<REPO>/ <!-- TODO: reemplazar con el link real de GitHub Pages -->
+**▶ Jugar en el navegador:** https://boxs21.github.io/hackatoneros/
 
 ---
 
@@ -38,8 +38,8 @@ Abre el link de GitHub Pages que está arriba. No hay que instalar nada.
 **Requisitos:** [Node.js](https://nodejs.org/) 20 o superior y npm (viene con Node).
 
 ```bash
-git clone https://github.com/<USUARIO>/<REPO>.git
-cd <REPO>
+git clone https://github.com/boxs21/hackatoneros.git
+cd hackatoneros
 npm install
 npm run dev
 ```
