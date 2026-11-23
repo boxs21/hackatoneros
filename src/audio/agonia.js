@@ -89,8 +89,10 @@ export function agonia(ac, out, t, { personaje = '', fase = 'agarre' } = {}) {
     o.stop(t + fin + 0.1);
     cuerdas.push({ o, des });
   }
-  // aire: ruido por la misma boca
-  const aire = G(entrada, 0);
+  // aire: ruido por la misma boca, pero aparte de las cuerdas (para poder dejar solo el aire)
+  const aire = ac.createGain();
+  aire.gain.value = 0;
+  forma.forEach(({ b }) => aire.connect(b));
   const sopl = ac.createBufferSource();
   sopl.buffer = ruido(ac);
   sopl.loop = true;
@@ -128,7 +130,7 @@ export function agonia(ac, out, t, { personaje = '', fase = 'agarre' } = {}) {
     // se le va el aire: un "ugh" que cae, y después la bocanada
     cerrarBoca(0, 0.2);
     nota([[0, 1.15], [0.07, 0.9], [0.24, 0.5]]);
-    vol(voz.gain, [[0, 0.0001], [0.012, 0.9], [0.1, 0.55], [0.26, 0.0001], [0.4, 0.0001, 1], [0.52, 0.1], [0.7, 0.0001]]);
+    vol(voz.gain, [[0, 0.0001], [0.012, 0.9], [0.1, 0.55], [0.26, 0.0001], [0.4, 0.0001, 1], [0.5, 0.6], [0.7, 0.0001]]);
     vol(aire.gain, [[0, 0.7], [0.06, 0.25], [0.26, 0.05], [0.4, 0.05, 1], [0.5, 0.9], [0.7, 0.0001]]);
     vol(tiembla.gain, [[0, 0.5], [0.26, 0.2], [0.7, 0.2]]);
     vol(entrada.gain, [[0, 1], [0.39, 1], [0.4, 0.12, 1], [0.7, 0.12]]); // la bocanada es casi puro aire
