@@ -8,7 +8,8 @@
 //
 //   ctx.audio.sfx('flash', { cerca: 0.6 })          flash + la multitud (cerca: 0 a 1)
 //   ctx.audio.sfx('frenazo' | 'puertas' | 'pitido' | 'empujon' | 'paso' | 'desaparece'
-//                 | 'atrapado' | 'susto' | 'celular' | 'notificacion' | 'ui' | 'latido' | 'crujido' | 'anuncio')
+//                 | 'atrapado' | 'susto' | 'celular' | 'notificacion' | 'ui' | 'latido' | 'crujido' | 'anuncio'
+//                 | 'vidrio' | 'grito' (opts.personaje: 'Escolar' | 'Oficinista' | 'Señora' | 'Vendedor'))
 //   ctx.audio.voz('vendedor', 'a-luca', { radio, position })   -> { duracion, fin, stop }
 //   ctx.audio.ambiente('anden' | 'vagon' | 'tunel' | 'casa' | 'multitud' | null)
 //   ctx.audio.silencio()                              corte total y seco

@@ -378,6 +378,46 @@ const SFX = {
     });
     return 1.7;
   },
+  // Ventana que revienta: golpe, astillas agudas cayendo y viento del túnel entrando.
+  vidrio(ac, out, t) {
+    golpe(ac, out, t, { f0: 160, f1: 45, dur: 0.12, vol: 0.55 });
+    rafaga(ac, out, t, { tipo: 'highpass', f: 2600, dur: 0.16, vol: 0.42, at: 0.001 });
+    for (let i = 0; i < 16; i++) {
+      const d = Math.random() ** 1.6 * 0.5, f = rnd(2400, 7800);
+      const g = G(ac, P(ac, out, rnd(-0.9, 0.9)), 0);
+      env(g.gain, t + d, rnd(0.05, 0.16), [rnd(0.04, 0.16), 1e-4, 'e']);
+      O(ac, g, 'sine', f, t + d, t + d + 0.2);
+      O(ac, G(ac, g, 0.4), 'sine', f * 1.51, t + d, t + d + 0.2);
+    }
+    const v = G(ac, out, 0);
+    env(v.gain, t + 0.08, 1e-4, [0.25, 0.4], [0.5, 0.22], [0.6, 1e-4, 'e']);
+    const bp = F(ac, v, 'bandpass', 500, 0.8);
+    env(bp.frequency, t + 0.08, 900, [0.4, 380], [0.95, 260]);
+    N(ac, bp, t + 0.08, t + 1.5);
+    return 1.5;
+  },
+  // Grito corto que se corta en seco. personaje: Escolar, Oficinista, Señora o Vendedor.
+  grito(ac, out, t, { personaje = '' } = {}) {
+    const quien = String(personaje).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const f0 = { escolar: 640, oficinista: 330, senora: 540, vendedor: 410 }[quien] ?? 480;
+    const D = 0.46;
+    const g = G(ac, out, 0);
+    env(g.gain, t, 1e-4, [0.03, 0.75], [D - 0.034, 0.85], [0.004, 0, 's']);
+    const a = F(ac, g, 'bandpass', 1050, 4);
+    const b = F(ac, G(ac, g, 0.7), 'bandpass', 1750, 5);
+    const c = F(ac, G(ac, g, 0.35), 'bandpass', 3100, 6);
+    [1, 1.007].forEach((des) => {
+      const o = ac.createOscillator();
+      o.type = 'sawtooth';
+      env(o.frequency, t, f0 * 0.82 * des, [0.08, f0 * 1.12 * des], [D - 0.08, f0 * des]);
+      // Aspereza: la voz se quiebra con un temblor rápido.
+      O(ac, G(ac, o.frequency, f0 * 0.045), 'sine', 34, t, t + D);
+      o.connect(a); o.connect(b); o.connect(c);
+      o.start(t); o.stop(t + D + 0.01);
+    });
+    N(ac, F(ac, G(ac, g, 0.16), 'bandpass', 2400, 1.5), t, t + D);
+    return D;
+  },
   ui(ac, out, t) {
     rafaga(ac, out, t, { tipo: 'highpass', f: 2800, dur: 0.01, vol: 0.4 });
     return 0.03;
