@@ -79,7 +79,7 @@ Todo lo que no hicimos nosotros, incluido lo que probamos y no quedó.
 | Modelo «Casual Character» | Quaternius | https://poly.pizza/m/kZ3DmIoGip | CC0 1.0 | Vendedor (`vendedor.glb`) |
 | Pack «Mini Characters» | Kenney | https://kenney.nl/assets/mini-characters | CC0 1.0 | Evaluado y descartado; no está en el repositorio |
 | Fuente Cormorant Garamond | Christian Thalmann | https://github.com/CatharsisFonts/Cormorant | SIL Open Font License 1.1 | Primer menú (retirada de ahí) y textos del modo pintura (`src/gfx/`) |
-| Música «Before the City Wakes» | Generada con IA de Google (el archivo trae firma C2PA de Google); la consiguió Andy | Sin enlace público | Por confirmar según las condiciones del servicio con que se generó | Música del menú (`public/audio/musica/menu.mp3`) |
+| Música «Before the City Wakes» | Generada con IA: Gemini, de Google (pedida por Andy; no tiene autor humano). El archivo trae la firma de procedencia C2PA de Google | https://gemini.google.com | Uso según las condiciones de servicio de Gemini; no es obra de terceros | Música del menú (`public/audio/musica/menu.mp3`) |
 | Voz del altavoz «Próxima estación… Baque—» | Voz de sistema «Paulina» de macOS (Apple), generada en el computador de Andy | Comando `say` de macOS | Voz de sistema de Apple; uso no comercial | `public/audio/voz-altavoz-altavoz-proxima-estacion-baque.m4a` |
 | Voces habladas de los personajes | Texto a voz de OpenAI, generadas por Valentín | — | Según las condiciones de OpenAI | Probadas y retiradas: el equipo prefirió murmullos generados por código |
 | Logo de Codex | OpenAI | https://hackathon.codexparatodos.com/logos/codex.png | Entregado por la organización | Menú y créditos (`public/codex.png`) |
