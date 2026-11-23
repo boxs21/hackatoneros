@@ -35,3 +35,63 @@ Meta: 15 decisiones o más antes de las 18:00.
 | 15:00 | Renato | Que el Oficinista hable por teléfono y te pase el celular dentro del juego (no en 2D), y que la cámara mire al calcetín | Pose procedural del brazo izquierdo sobre el modelo 3D (apunta los huesos a la oreja o hacia ti, encima de su animación de reposo) y cámara que se fija en el calcetín cuando aparece y mientras habla | Toca archivos de otros con permiso: world/pasajeros.js y states/horaPunta.js (Camilo), world/calcetin.js; antes armR no se veía porque mueve la figura de cubos, que queda oculta bajo el modelo |
 | 15:20 | Renato | Que la llamada a tu mamá sea en 3D y que el celular del Oficinista tenga Codex abierto (ingrediente: logo de Codex) | Celular 3D en tu mano con pantalla animada: Codex con su logo oficial, lo cierras, marcas, «Llamando… Mamá» y «SIN SEÑAL» cuando se corta el altavoz; el Oficinista dice que justo lo estaba ocupando | Reemplaza la llamada 2D (ui/llamada.js, borrado); el celular lo maneja horaPunta.js con 3 llamadas |
 | 15:35 | Renato | Que el guiño a 31 Minutos sea parte de la historia y no un objeto suelto en un asiento | El Escolar te regala su calcetín con rombos como agradecimiento («¡Calcetín con rombos maaan!») en vez del llavero con luz; sale en 3D en el aviso de objeto obtenido | Se borra el calcetín del asiento de Los cinco (world/calcetin.js) y con el llavero se va la luz chica a tus pies en Borrados y en el Vendedor; se ajustan textos (muerte, README) |
+| 15:10 | Andy | Que el peligro se oiga y dé miedo de verdad | Capa de audio con una sola perilla (0 a 1): corazón de 58 a 160 pulsaciones, respiración que pasa a jadeo, susurros que vienen del lado del más cercano, grave en el pecho, pitido de oídos, y el fondo se ensordece; el flash suena según la distancia | Sube rápido y baja lento (el corazón no se calma al tiro); se engancha en `scene.light()`, así todos los vagones a oscuras la tienen sin tocar cada estado |
+
+## Sonido, menú y dirección visual (Andy)
+
+Decisiones del área de Andy, tomadas con asistencia de IA. Mismo formato: qué pedimos, qué salió y qué decidimos.
+
+| Hora | Quién | Qué le pedimos | Qué salió | Qué decidimos |
+| --- | --- | --- | --- | --- |
+| 10:55 | Andy | Todo el sonido del juego sin depender de grabaciones | Motor en `src/audio/` con la interfaz acordada (unlock, sfx, voz, ambiente, silencio, posicional, musica, stopAll): 30 sonidos generados con Web Audio, limitador y volúmenes por grupo | El sonido se genera por código; un archivo en `public/audio/` con el mismo nombre reemplaza al generado |
+| 11:00 | Andy | El silencio del apagón | `silencio()` baja el volumen final a cero en el acto y mata todo lo que suena, sin fundido | El corte es seco y total: después del apagón no queda ni la cola de un eco |
+| 11:05 | Andy | Poder elegir entre variantes de los sonidos que definen el tono | Página aparte con 2 o 3 variantes de flash, multitud, frenazo, vagón, túnel, susto y música, usando el mismo código del juego | Flash de obturador, multitud en susurro, frenazo con sacudón, túnel con pitido de oídos y música de cajita; quedan en `presets.js` |
+| 11:10 | Andy | Que la multitud del flash suene distinto según qué tan cerca están | `sfx('flash', { cerca })` con `cerca` de 0 a 1: más voces, más volumen y más brillo | Lo pasa la escena; si no lo pasa, suena lejos |
+| 11:20 | Andy | Personajes que no sean cajas: buscar modelos 3D libres | Se revisaron dos packs CC0: Mini Characters de Kenney (muñecos cabezones) y modelos sueltos de Quaternius en Poly Pizza (cuerpos low-poly con esqueleto y animaciones) | Quedan cinco de Quaternius en `public/modelos/` con su `LEEME.txt`; el pack de Kenney se descartó por no calzar con terror y no se incluyó |
+| 11:25 | Andy | Que el 23 obligatorio se vea sí o sí | Línea 23: bala amarilla, texto «LÍNEA 23 · ÚLTIMO TREN» y letrero colgante dentro del vagón | El metro del juego es la Línea 23 (antes Línea 0) |
+| 11:35 | Andy | Revisar la dirección visual contra lo que hace buenos a los juegos de terror de baja resolución | Informe con 26 fuentes: normas de destellos, documentación de la PlayStation, entrevistas y postmortems | Rojo de los asientos menos saturado, VHS con el color corrido en horizontal (no separar rojo y azul) y estela del flash con su color en vez de gris |
+| 11:40 | Andy | Reglas de seguridad para un juego hecho de destellos | Límite de 3 destellos por segundo (WCAG 2.3.1, ITU-R BT.1702) y riesgo de ráfagas de más de 5 s | Espera mínima de 0,6 s, recalentado de 1,5 s al cuarto flash seguido, aviso al inicio y nunca escribir «seguro para epilepsia»; quedó en `DISENO.md` |
+| 11:42 | Andy | Qué hace que un flash asuste | Regla de SCP-173 y de Frictional: mostrar lo menos posible y que se muevan cuando no los ves | Los borrados quedan quietos durante el flash y se mueven solo a oscuras |
+| 11:45 | Andy | Que los personajes se vean de Santiago y no genéricos | Informe con fuentes chilenas (uniforme escolar, comercio ambulante en el metro, vestimenta de oficina, completo italiano) y recolor de cada modelo material por material | Polerón azul marino y pantalón gris, terno con credencial, chaleco de lana y carro de feria, jockey y banano; sin logos ni marcas, y sin atar el tono de piel al oficio |
+| 11:47 | Andy | Dejar todas las decisiones de diseño en un solo lugar | `DISENO.md`: paleta en hex, shader VHS, reglas del flash, borrados, celular, letras, vestuario por material y fuentes | Cada sección dice a quién le toca implementarla |
+| 12:10 | Andy | Menú de inicio con música | Primera versión: número 23 en oro deshaciéndose en partículas, con tipografía serif | Se descartó a los 25 minutos: se veía ajeno al juego |
+| 12:13 | Andy | Que la música del menú parta sola | Los navegadores bloquean el sonido hasta el primer click o tecla; no se puede saltar con código | La música intenta partir al abrir y, si la bloquean, entra en el primer gesto sin esperar la carga de las voces; la música larga se reproduce directo desde `public/audio/musica/` |
+| 12:18 | Andy | Que el tren suene como metro japonés | Variante de ambiente con motor que sube en escalones, rieles en pares (ga-tan… go-ton), aire acondicionado y gente en voz baja | Reemplaza al ambiente anterior en hora punta |
+| 12:18 | Andy | Altavoz que alcance a hablar y se corte con la luz | Campanilla propia de cuatro notas, voz por radio que entra 1,1 s después y que solo calla con `silencio()` | El frenazo parte 1,4 s después de la línea del altavoz y el corte seco cae a media palabra; se midió la grabación para ubicarlo |
+| 12:24 | Andy | Sonidos para las muertes del primer vagón | `vidrio` (golpe, astillas y viento del túnel) y `grito` corto que se corta en seco, con tono distinto por personaje | Generados por código, sin grabaciones |
+| 12:35 | Andy | Que el menú se parezca a los gráficos del juego | Segunda versión: de fondo el vagón 3D real a oscuras, con un flash solo cada 6 a 9 s que muestra a los borrados un paso más cerca; todo en 320x240 | El título es el letrero LED del tren, con una letra de matriz 5x7 dibujada a mano; se fue la tipografía serif del menú |
+| 12:51 | Andy | Que el altavoz anuncie una estación y se corte | Se pidió usar los anuncios reales del metro tomados de un video; no se usaron por ser audio oficial ajeno | Voz propia generada en el computador (voz de sistema en español) que dice «Próxima estación… Baque—» |
+| 13:05 | Andy | Revisar el juego después de mezclar ramas | El cartel de PAUSA quedaba siempre visible: el `display` del estilo en línea le ganaba al atributo `hidden` | Se avisó al equipo con el arreglo de una línea y Camilo lo corrigió |
+| 14:30 | Andy | Por qué un compañero no veía el modo pintura | El modo queda guardado en el navegador: si se aprieta G una vez, sigue en PS1 aunque el modo por defecto sea pintura | Probar con `?gfx=pintura`; queda pendiente un respaldo automático al PS1 si el equipo no soporta el modo |
+
+## Recursos de terceros
+
+Todo lo que no hicimos nosotros, incluido lo que probamos y no quedó.
+
+| Recurso | Autor | Fuente | Licencia | Uso en el juego |
+| --- | --- | --- | --- | --- |
+| Three.js 0.170 (incluye GLTFLoader y SkeletonUtils) | three.js authors | https://github.com/mrdoob/three.js | MIT | Motor 3D y carga de modelos |
+| Vite 6 | Vite contributors | https://github.com/vitejs/vite | MIT | Servidor de desarrollo y build |
+| Modelo «Man in Suit» | Quaternius | https://poly.pizza/m/mQnGoME1ez | CC0 1.0 | Oficinista (`public/modelos/oficinista.glb`) |
+| Modelo «Woman» | Quaternius | https://poly.pizza/m/AQsd9ngvKU | CC0 1.0 | Señora (`senora.glb`) |
+| Modelo «Woman Casual» | Quaternius | https://poly.pizza/m/jpKRgGDxhk | CC0 1.0 | Pasajera de relleno (`mujer.glb`) |
+| Modelo «Hoodie Character» | Quaternius | https://poly.pizza/m/gKLBoRsyKe | CC0 1.0 | Escolar (`escolar.glb`) |
+| Modelo «Casual Character» | Quaternius | https://poly.pizza/m/kZ3DmIoGip | CC0 1.0 | Vendedor (`vendedor.glb`) |
+| Pack «Mini Characters» | Kenney | https://kenney.nl/assets/mini-characters | CC0 1.0 | Evaluado y descartado; no está en el repositorio |
+| Fuente Cormorant Garamond | Christian Thalmann | https://github.com/CatharsisFonts/Cormorant | SIL Open Font License 1.1 | Primer menú (retirada de ahí) y textos del modo pintura (`src/gfx/`) |
+| Música «Before the City Wakes» | Generada con IA de Google (el archivo trae firma C2PA de Google); la consiguió Andy | Sin enlace público | Por confirmar según las condiciones del servicio con que se generó | Música del menú (`public/audio/musica/menu.mp3`) |
+| Voz del altavoz «Próxima estación… Baque—» | Voz de sistema «Paulina» de macOS (Apple), generada en el computador de Andy | Comando `say` de macOS | Voz de sistema de Apple; uso no comercial | `public/audio/voz-altavoz-altavoz-proxima-estacion-baque.m4a` |
+| Voces habladas de los personajes | Texto a voz de OpenAI, generadas por Valentín | — | Según las condiciones de OpenAI | Probadas y retiradas: el equipo prefirió murmullos generados por código |
+| Logo de Codex | OpenAI | https://hackathon.codexparatodos.com/logos/codex.png | Entregado por la organización | Menú y créditos (`public/codex.png`) |
+
+No usamos logos, señalética ni sonidos oficiales de Metro de Santiago.
+
+### Fuentes consultadas para el diseño
+
+No son recursos incluidos en el juego: son lecturas de las que salieron decisiones.
+
+- Destellos: [WCAG 2.3.1](https://www.w3.org/WAI/WCAG22/Understanding/three-flashes-or-below-threshold.html), [ITU-R BT.1702-3](https://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.1702-3-202311-I!!PDF-E.pdf), [Xbox Accessibility Guideline 118](https://learn.microsoft.com/en-us/gaming/accessibility/xbox-accessibility-guidelines/118), [Game Accessibility Guidelines](https://gameaccessibilityguidelines.com/avoid-flickering-images-and-repetitive-patterns/).
+- Estilo PS1: [Roman Liutikov](https://romanliutikov.com/blog/ps1-style-graphics-in-threejs), [David Colson](https://www.david-colson.com/2021/11/30/ps1-style-renderer.html), [psx-spx](https://psx-spx.consoledev.net/graphicsprocessingunitgpu/).
+- Terror: [Frictional Games](https://gamedeveloper.com/design/four-ways-to-design-for-horror-from-i-amnesia-i-dev-frictional-games), [SCP: Containment Breach](https://fistfulofwits.com/2013/04/23/design-elements-in-horror-scp-containment-breach/), [Fangoria sobre terror de baja resolución](https://www.fangoria.com/original/goreplay-inside-the-eerie-world-of-low-res-horror-gaming/).
+- Santiago: [uniforme escolar chileno](https://es.wikipedia.org/wiki/Uniforme_escolar_chileno), [comercio ambulante en el metro (The Clinic)](https://www.theclinic.cl/2023/02/10/un-recorrido-por-el-descontrolado-comercio-ambulante-en-el-metro-de-santiago/), [cómo se visten los ejecutivos (Diario Financiero)](https://www.df.cl/tendencias/negocios-mundo/como-se-visten-los-ejecutivos-de-chile-y-latinoamerica), [completo italiano (La Tercera)](https://www.latercera.com/practico/noticia/todo-lo-que-hay-que-saber-para-preparar-buenos-y-verdaderos-completos/BWZCNIETDRAJNIK6I5C4Q7MZKE/).
+- Referencia de estilo para el primer menú y el modo pintura: Clair Obscur: Expedition 33 (Sandfall Interactive). Se tomó el lenguaje visual, no arte, logos ni música.
