@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { borradoGeometry } from './figura.js';
 import { lambert, pixelTexture, seeded } from './ps1.js';
 import { textura } from './texturas.js';
+import { createSangre } from './sangre.js';
 
 // Cómo se llevan a cada pasajero: un borrado lo agarra, lo levanta, lo azota
 // y lo saca por la ventana. El vidrio revienta, queda el hoyo, la sangre y
@@ -88,16 +89,6 @@ function drawHoyo(g, n, rnd) {
   }
 }
 
-function drawSangre(g, n, rnd) {
-  for (let i = 0; i < 26; i++) {
-    const a = rnd() * Math.PI * 2;
-    const r = n * rnd() * rnd() * .48;
-    const s = 1 + Math.floor(rnd() * (r < n * .15 ? 6 : 2));
-    g.fillStyle = rnd() > .4 ? '#6e0a0a' : '#3d0606';
-    g.fillRect(Math.floor(n / 2 + Math.cos(a) * r), Math.floor(n / 2 + Math.sin(a) * r), s, s);
-  }
-}
-
 export function createMuertes(ctx) {
   const stage = ctx.stage;
   const group = new THREE.Group();
@@ -130,19 +121,16 @@ export function createMuertes(ctx) {
   // ---- marcas: hoyo en el vidrio, sangre en el asiento y en el piso
   const decal = (map) => lambert({ map, alphaTest: .5, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
   const hoyoMat = decal(lienzo(32, drawHoyo));
-  const sangreMat = decal(lienzo(24, drawSangre));
   const hoyoGeo = new THREE.PlaneGeometry(1.7, 1.25);
-  const manchaGeo = new THREE.PlaneGeometry(1, 1);
   const marcas = [];
   for (let i = 0; i < MAX; i++) {
     const hoyo = new THREE.Mesh(hoyoGeo, hoyoMat);
-    const asiento = new THREE.Mesh(manchaGeo, sangreMat);
-    const piso = new THREE.Mesh(manchaGeo, sangreMat);
-    asiento.rotation.x = piso.rotation.x = -Math.PI / 2;
-    hoyo.visible = asiento.visible = piso.visible = false;
-    group.add(hoyo, asiento, piso);
-    marcas.push({ hoyo, asiento, piso });
+    hoyo.visible = false;
+    group.add(hoyo);
+    marcas.push({ hoyo });
   }
+  // la sangre de verdad (charcos, salpicaduras, chorreos, manos): world/sangre.js
+  const sangre = createSangre(group);
 
   // ---- astillas de vidrio
   const tri = new THREE.BufferGeometry();
@@ -176,14 +164,9 @@ export function createMuertes(ctx) {
     m.hoyo.position.set(s * (WALL_X - .045), WIN_Y, wz);
     m.hoyo.rotation.y = -s * Math.PI / 2;
     m.hoyo.rotation.z = (i - 1.5) * .3;
-    m.asiento.position.set(s * 2.16, .525, wz);
-    m.asiento.scale.set(.55, 1.5, 1);
-    m.asiento.rotation.z = i * 1.3;
-    m.hoyo.visible = m.asiento.visible = true;
-    m.piso.position.set(px, .012, pz);
-    m.piso.scale.setScalar(1.1 + i * .15);
-    m.piso.rotation.z = i * 2.1;
-    m.piso.visible = true;
+    m.hoyo.visible = true;
+    sangre.ventana(s, wz);
+    if (quieto) sangre.golpe(px, pz); // punto de control: lo que quedó en el piso
     hoyos[s].push(wz);
     const L = hoyoLuz[s];
     L.position.set(s * 1.9, WIN_Y, hoyos[s].reduce((a, b) => a + b, 0) / hoyos[s].length);
@@ -258,7 +241,7 @@ export function createMuertes(ctx) {
       if (cur) return false;
       const s = Math.sign(p.x) || 1;
       const v = VARIANTES[i % VARIANTES.length];
-      cur = { p, i, s, v, t: 0, wz: ventanaZ(p.z), golpe: 0, lanzado: false, roto: false, fuera: false, dicho: false, pisoX: p.x, pisoZ: p.z };
+      cur = { p, i, s, v, t: 0, wz: ventanaZ(p.z), golpe: 0, golpes: 0, rastroX: p.x, voz: null, lanzado: false, roto: false, fuera: false, dicho: false, pisoX: p.x, pisoZ: p.z };
       p.gone = true;
       soltar(p);
       killer.position.set(p.x - s * .42, 0, p.z);
@@ -266,8 +249,10 @@ export function createMuertes(ctx) {
       killer.visible = true;
       strobe.position.set(p.x * .4, 2.75, p.z + .4);
       ctx.audio.sfx('susto', { volume: .8 });
-      ctx.audio.sfx('grito', { personaje: p.name, delay: .12 });
-      ctx.hud.subtitle(ULTIMAS[i] || '', 1500);
+      // grita de verdad (audio/agonia.js); el subtítulo queda, pero sin el murmullo encima
+      cur.voz = ctx.audio.sfx('agonia', { personaje: p.name, fase: 'agarre', delay: .1 });
+      ctx.hud.subtitle(ULTIMAS[i] || '', 1500)?.stop?.();
+      sangre.piso('rocio', p.x, p.z, 1.2);
       shake = .5;
       return true;
     },
@@ -291,6 +276,7 @@ export function createMuertes(ctx) {
         hoyoLuz[s].intensity = n ? .3 + Math.pow(Math.max(0, Math.sin(tiempo * 4.2 + s)), 10) * (1.6 + n * .5) : 0;
       }
       moverAstillas(dt);
+      sangre.update(dt);
       shake *= Math.max(0, 1 - dt * 5);
       cam.rotation.z = shake > .004 ? Math.sin(tiempo * 61) * shake * .09 : 0;
 
@@ -336,7 +322,10 @@ export function createMuertes(ctx) {
               c.pisoZ = root.position.z;
               ctx.audio.sfx('empujon', { volume: 1 });
               ctx.audio.sfx('crujido');
-              ctx.audio.sfx('grito', { personaje: p.name, volume: .7, delay: .05 });
+              c.voz?.stop?.(.03);
+              c.voz = ctx.audio.sfx('agonia', { personaje: p.name, fase: 'golpe' });
+              sangre.golpe(c.pisoX, c.pisoZ, 1 + c.golpes * .25);
+              c.golpes += 1;
             }
           }
         }
@@ -347,6 +336,11 @@ export function createMuertes(ctx) {
           root.position.x = THREE.MathUtils.lerp(p.x, s * 1.55, k * k);
           killer.position.x = root.position.x - s * .4;
           c.pisoX = (p.x + root.position.x) / 2;
+          // va dejando el rastro por donde la llevan
+          if (Math.abs(root.position.x - c.rastroX) > .45) {
+            sangre.arrastre(c.rastroX, p.z, root.position.x, p.z);
+            c.rastroX = root.position.x;
+          }
         }
         root.position.y = y + Math.sin(t * 43) * .02;
         root.rotation.x = -1.45 * tumbado;
@@ -360,6 +354,9 @@ export function createMuertes(ctx) {
         // lanzado contra el vidrio
         if (!c.lanzado) {
           c.lanzado = true;
+          // el grito largo que se va con el tren
+          c.voz?.stop?.(.04);
+          c.voz = ctx.audio.sfx('agonia', { personaje: p.name, fase: 'caida' });
           from.copy(root.position);
           to.set(s * (WALL_X - .1), 1.0, c.wz);
         }

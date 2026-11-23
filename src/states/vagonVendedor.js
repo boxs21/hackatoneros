@@ -32,7 +32,7 @@ export default {
   enter(ctx, data = {}) {
     const retry = data.retry || 0;
     ctx.audio.ambiente('tunel');
-    const scene = setupVagon(ctx, { z: START_Z, ambient: .015, fogFar: 7, tubeFlicker: false });
+    const scene = setupVagon(ctx, { z: START_Z, ambient: .015, fogFar: 7, tubeFlicker: false, sangre: 7 });
     const crowd = createBorrados({
       colliders: scene.colliders, seed: 41 + retry, zFrom: 7.5, density: Math.max(.15, .38 - retry * .08), corridor: 1.1, reserve: 0,
     });

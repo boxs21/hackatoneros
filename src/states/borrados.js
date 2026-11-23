@@ -39,7 +39,7 @@ export default {
     crowd.face(ctx.camera.position);
 
     S = { scene, passengers, crowd, scare, muertes, llavero, retry, vanished: 0, t: 0, bestZ: 11,
-      caught: -1, done: false, doorMsg: -9, intro: retry || data.desdeCinco ? 99 : 0, /* desde Los cinco ya conoces el flash */ lastLie: -99, rule: null };
+      caught: -1, done: false, doorMsg: -9, miedoDir: { pan: 0, detras: false }, intro: retry || data.desdeCinco ? 99 : 0, /* desde Los cinco ya conoces el flash */ lastLie: -99, rule: null };
     if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
 
     if (retry) {
@@ -141,6 +141,18 @@ export default {
     const d = crowd.nearest(cam.position);
     const danger = THREE.MathUtils.clamp((1.6 - d) / 1.1, 0, 1);
     scene.danger = danger;
+    // Para el oído el miedo empieza antes que el rojo (desde 5 m, suave) y trae dirección:
+    // los susurros vienen del lado donde está el más cercano; a tu espalda suenan tapados.
+    scene.miedo = Math.max(danger, .35 * THREE.MathUtils.clamp((5 - d) / 3.4, 0, 1));
+    const cerca = crowd.nearestPerson(cam.position);
+    if (cerca) {
+      const dx = cerca.x - cam.position.x;
+      const dz = cerca.z - cam.position.z;
+      const yaw = cam.rotation.y;
+      S.miedoDir.pan = (dx * Math.cos(yaw) - dz * Math.sin(yaw)) / Math.max(d, .2);
+      S.miedoDir.detras = dx * Math.sin(yaw) + dz * Math.cos(yaw) > 0;
+      scene.miedoDir = S.miedoDir;
+    }
     scene.light(level, dt, flash);
     crowd.show(level, glow);
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .75;

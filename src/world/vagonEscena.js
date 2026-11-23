@@ -2,11 +2,12 @@ import * as THREE from 'three';
 import { createVagon, VAGON } from './vagon.js';
 import { createOverlay } from './overlay.js';
 import { createCelular } from './celular.js';
+import { createSangre } from './sangre.js';
 
 // Arma el vagón a oscuras dentro de ctx.stage: luces de emergencia, niebla,
 // la luz del flash (sale del celular) y la capa de pantalla.
 // lit = true: hora punta, luces encendidas y el tren andando (luces del túnel pasan).
-export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, tubeFlicker = false, lit = false, litColor = 0xeef4ff, litPower = 2.2, roto = false } = {}) {
+export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, tubeFlicker = false, lit = false, litColor = 0xeef4ff, litPower = 2.2, roto = false, sangre = 0 } = {}) {
   const { camera, stage, scene } = ctx;
   camera.rotation.order = 'YXZ';
   camera.position.set(0, 1.55, z);
@@ -28,6 +29,9 @@ export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, t
   // tubo que parpadea (si hay)
   const flickLight = new THREE.PointLight(0xd8f0ff, 0, 6, 1);
   flickLight.position.copy(vagon.flickPos).y -= .2;
+
+  // sangre: semilla (número) para un vagón por el que ya pasaron. 0 = limpio.
+  const manchas = sangre ? createSangre(stage).vestir(sangre, { piso: !roto }) : null;
 
   const overlay = createOverlay();
   const celular = createCelular();
@@ -67,6 +71,7 @@ export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, t
   return {
     vagon,
     overlay,
+    sangre: manchas,
     celular, // para esconderlo mientras todavía no te lo dan (hora punta)
     colliders: vagon.colliders,
     danger: 0, // 0..1, lo pone el estado (radar del celular)
@@ -88,6 +93,9 @@ export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, t
       fill.intensity = level * .5;
       this.tubeOn = vagon.update(dt);
       flickLight.intensity = this.tubeOn * 2.2;
+      // peligro que se oye (audio/peligro.js): latido, respiración y susurros según qué tan cerca están.
+      // miedo / miedoDir los pone el estado si quiere más alcance o dirección; si no, vale danger.
+      ctx.audio.peligro?.(this.miedo ?? this.danger, this.miedoDir);
       // radar: el celular vibra (sonido de Andy) mientras más cerca, más seguido
       if (this.danger > .3) {
         this.buzzT = (this.buzzT || 0) - dt;

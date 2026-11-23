@@ -77,7 +77,7 @@ export default {
     const retry = data.retry || 0;
     const code = data.code || Array.from({ length: 3 }, () => Math.floor(Math.random() * 10)).join('');
     ctx.audio.ambiente('tunel');
-    const scene = setupVagon(ctx, { z: 11.2, ambient: .35, fogFar: 13, tubeFlicker: true });
+    const scene = setupVagon(ctx, { z: 11.2, ambient: .35, fogFar: 13, tubeFlicker: true, sangre: 3 });
 
     const pick = data.picks || SPOTS.map(() => Math.floor(Math.random() * 5));
     // nadie parado delante de los números de tiza

@@ -10,13 +10,23 @@
 //   ctx.audio.sfx('frenazo' | 'puertas' | 'pitido' | 'empujon' | 'paso' | 'desaparece'
 //                 | 'atrapado' | 'susto' | 'celular' | 'notificacion' | 'ui' | 'latido' | 'crujido' | 'anuncio'
 //                 | 'vidrio' | 'grito' (opts.personaje: 'Escolar' | 'Oficinista' | 'Señora' | 'Vendedor'))
+//   ctx.audio.sfx('agonia', { personaje, fase: 'agarre' | 'golpe' | 'caida' })   gritos de verdad (agonia.js)
 //   ctx.audio.voz('vendedor', 'a-luca', { radio, position })   -> { duracion, fin, stop }
 //   ctx.audio.ambiente('anden' | 'vagon' | 'tunel' | 'casa' | 'multitud' | null)
 //   ctx.audio.silencio()                              corte total y seco
 //   ctx.audio.posicional('vendedor' | 'borrados', pos, { camera: ctx.camera })
 //   ctx.audio.musica('casa' | 'menu' | null)        'menu' suena desde public/audio/musica/
+//   ctx.audio.peligro(nivel, { pan, detras })       0 a 1, en cada cuadro: latido, respiración,
+//                                                   susurros del lado del más cercano, y el fondo se apaga.
+//                                                   Con la capa activa, sfx('flash') usa ese nivel como `cerca`
+//                                                   y sfx('latido') no suena (el corazón ya lo lleva la capa).
 import { receta, habla } from './synth.js';
 import { PRESETS, MEZCLA, VOZ_RADIO } from './presets.js';
+import { crearPeligro } from './peligro.js';
+import { agonia } from './agonia.js';
+
+// Recetas que viven en su propio archivo (synth.js no importa nada).
+const EXTRA = { agonia };
 
 // Archivos presentes en public/audio/, por nombre sin extensión.
 const urls = import.meta.glob('/public/audio/**/*.{ogg,mp3,wav,m4a}', { eager: true, query: '?url', import: 'default' });
@@ -33,6 +43,8 @@ let bus = null;
 let cargando = null;
 let oyente = null; // cámara que hace de oídos
 let oyenteRaf = 0;
+let capa = null; // peligro que se oye (peligro.js)
+let sordera = null; // filtro y volumen del fondo: con miedo el mundo se apaga
 
 const activos = new Set(); // todo lo que suena ahora: { stop(fade) }
 let ambActual = null;
@@ -75,8 +87,24 @@ function armar() {
   for (const k of ['sfx', 'voz', 'ambiente', 'musica']) {
     bus[k] = ac.createGain();
     bus[k].gain.value = MEZCLA[k];
-    bus[k].connect(lim);
+    if (k !== 'ambiente') bus[k].connect(lim);
   }
+  // El fondo pasa por un filtro y un volumen que cierra el miedo. En calma es transparente.
+  const filtro = ac.createBiquadFilter();
+  filtro.type = 'lowpass';
+  filtro.frequency.value = 20000;
+  filtro.Q.value = 0.5;
+  const baja = ac.createGain();
+  bus.ambiente.connect(filtro).connect(baja).connect(lim);
+  sordera = { filtro, baja };
+}
+
+// n: 0 (calma) a 1 (pánico). El fondo se ensordece y baja.
+function apagarMundo(n) {
+  if (!sordera) return;
+  const t = ac.currentTime;
+  sordera.filtro.frequency.setTargetAtTime(600 + 19400 * (1 - n) ** 2.4, t, 0.25);
+  sordera.baja.gain.setTargetAtTime(1 - 0.45 * n, t, 0.25);
 }
 
 async function cargar() {
@@ -139,7 +167,7 @@ function golpe(grupo, nombre, dest, opts) {
     tocarBuffer(buf, dest, opts);
     return buf.duration / (opts.rate ?? 1);
   }
-  const r = receta(grupo, nombre, PRESETS);
+  const r = (grupo === 'sfx' && EXTRA[nombre]) || receta(grupo, nombre, PRESETS);
   return r ? r(ac, dest, t, opts) : null;
 }
 
@@ -249,6 +277,12 @@ export const audio = {
   // 'flash' suma a la multitud: cerca (0 lejos, 1 encima), multitud: false para apagarla.
   sfx(name, opts = {}) {
     if (!ac) return NADA;
+    // el corazón lo lleva la capa de peligro: el golpe suelto sonaría doble
+    if (name === 'latido' && capa?.activa) return NADA;
+    // el flash suena según qué tan cerca están (si el llamador no lo dice, lo dice el peligro)
+    if (name === 'flash' && opts.cerca == null && capa?.activa) opts = { ...opts, cerca: Math.max(0.15, capa.valor) };
+    // de cerca, además: pitido de oídos, golpe en el pecho y los susurros contestan (nunca en calma: menú)
+    if (name === 'flash' && opts.multitud !== false && capa?.activa) capa.destello(Math.min(opts.cerca ?? 0, capa.valor * 1.5));
     const g = canal('sfx', opts);
     let dur = golpe('sfx', name, g, opts);
     if (dur == null) { avisar('sfx', name); g.disconnect(); return NADA; }
@@ -303,6 +337,7 @@ export const audio = {
     const t = ac.currentTime;
     master.gain.cancelScheduledValues(t);
     master.gain.setValueAtTime(0, t);
+    capa?.callar();
     this.stopAll(0);
     master.gain.setValueAtTime(MEZCLA.master, t + 0.06);
   },
@@ -341,6 +376,18 @@ export const audio = {
     musNombre = musActual ? name : null;
   },
 
+  // Peligro que se oye: llamar en cada cuadro con qué tan cerca está lo que te persigue.
+  // nivel 0 a 1. opts.pan: -1 (izquierda) a 1 (derecha), opts.detras: está a tu espalda.
+  // Si se deja de llamar, se apaga solo. Ver peligro.js.
+  peligro(nivel, opts) {
+    if (!ac) return;
+    if (!capa) {
+      if (!(nivel > 0)) return;
+      capa = crearPeligro(ac, bus.sfx, { alMundo: apagarMundo });
+    }
+    capa.nivel(nivel, opts);
+  },
+
   // Volumen final, de 0 a 1 (para ajustar en el escenario).
   volumen(v) {
     MEZCLA.master = v;
@@ -351,6 +398,7 @@ export const audio = {
   stopAll(fade = 0.05) {
     if (!ac) return;
     [...activos].forEach((h) => h.stop(fade));
+    capa?.callar();
     ambActual = null; ambNombre = null;
     musActual = null; musNombre = null;
   },

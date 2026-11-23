@@ -55,7 +55,7 @@ export default {
   autoAdvance: true,
   enter(ctx, data = {}) {
     ctx.audio.ambiente('tunel');
-    const scene = setupVagon(ctx, { z: 11, ambient: .1, fogFar: 16, roto: true });
+    const scene = setupVagon(ctx, { z: 11, ambient: .1, fogFar: 16, roto: true, sangre: 11 });
     const stage = ctx.stage;
     const mats = scene.vagon.parts.mats;
 
