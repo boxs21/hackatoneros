@@ -40,7 +40,8 @@ const TRAZOS = {
 const PALETAS = {
   base: { niebla: [.05, .14, .7], ambO: .012, ambL: .3, flash: .5, dens: .15, lavado: .2, // ultramar + el carmín de la salida
     cielo: { cenit: [.008, .02, .11], medio: [.11, .03, .24], horiz: [.8, .13, .1], corona: [1, .62, .3] } },
-  horaPunta: { niebla: [1, .55, .22], ambO: .03, ambL: .75, flash: .3, dens: .11, lavado: .3 }, // ámbar de tarde
+  // hora punta: luz de tubo fluorescente, aire limpio (el ámbar espeso parecía arena: es un metro)
+  horaPunta: { niebla: [.62, .7, .8], ambO: .02, ambL: .1, flash: .3, dens: .035, lavado: .05 },
   vagonEscolar: { niebla: [0, .6, .68], ambO: .015, ambL: .3, flash: .5, dens: .15, lavado: .22, // turquesa
     cielo: { cenit: [0, .04, .08], medio: [0, .22, .28], horiz: [.12, .8, .72], corona: [1, .9, .6] } },
   vagonOficinista: { niebla: [.46, .14, .75], ambO: .015, ambL: .3, flash: .5, dens: .14, lavado: .22, // violeta
