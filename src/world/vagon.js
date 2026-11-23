@@ -29,9 +29,9 @@ export function createVagon({ tubeFlicker = false, lit = false, roto = false } =
     paredAlta: lambert({ map: textura('pared', 6, .5) }),
     asiento: lambert({ map: textura('asiento', 4, 1) }),
     respaldo: lambert({ map: textura('asiento', 4, .5) }),
-    base: lambert({ color: 0x3c3f44 }),
+    base: lambert({ color: 0xcfc8b2 }), // zócalo crema bajo los asientos
     metal: lambert({ color: 0xb9bcbf }),
-    marco: lambert({ color: 0x6e7274 }),
+    marco: lambert({ color: 0x1c1d20 }), // marcos negros de ventanas y puertas
     goma: lambert({ color: 0x1b1b1d }),
     vidrio: lambert({ map: textura('vidrio'), transparent: true, opacity: .45, depthWrite: false }),
     tunel: lambert({ map: textura('tunel', 10, 2) }),

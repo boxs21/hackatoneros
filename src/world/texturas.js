@@ -29,53 +29,56 @@ function noise(g, w, h, rnd, alpha = 0.08, size = 1) {
 
 const DRAW = {
   suelo: [32, 32, (g, w, h, rnd) => {
-    g.fillStyle = '#3b3a3d';
+    // piso gris claro, como el de los trenes de Santiago (solo colores, sin marcas)
+    g.fillStyle = '#a2a6a9';
     g.fillRect(0, 0, w, h);
-    noise(g, w, h, rnd, 0.25);
+    noise(g, w, h, rnd, 0.2);
     for (let y = 2; y < h; y += 8) {
       for (let x = (y / 8) % 2 ? 6 : 2; x < w; x += 8) {
-        g.fillStyle = '#29282b';
+        g.fillStyle = '#8b8f93';
         g.fillRect(x, y + 1, 3, 2);
-        g.fillStyle = '#56545a';
+        g.fillStyle = '#b9bdc0';
         g.fillRect(x, y, 3, 1);
       }
     }
   }],
   pared: [32, 32, (g, w, h, rnd) => {
-    g.fillStyle = '#c9c2a8';
+    // paneles crema / marfil
+    g.fillStyle = '#ece4cf';
     g.fillRect(0, 0, w, h);
-    noise(g, w, h, rnd, 0.22);
-    g.fillStyle = '#8d8671';
+    noise(g, w, h, rnd, 0.14);
+    g.fillStyle = '#bdb49c';
     g.fillRect(0, 0, 1, h);
-    g.fillStyle = '#e2dcc6';
+    g.fillStyle = '#f8f2e2';
     g.fillRect(1, 0, 1, h);
     // mugre que baja
     for (let i = 0; i < 5; i++) {
       const x = Math.floor(rnd() * w);
-      g.fillStyle = 'rgba(70,60,40,.18)';
+      g.fillStyle = 'rgba(70,60,40,.11)';
       g.fillRect(x, Math.floor(rnd() * 10), 1, 8 + Math.floor(rnd() * 20));
     }
   }],
   techo: [32, 32, (g, w, h, rnd) => {
-    g.fillStyle = '#b6b3a4';
+    g.fillStyle = '#e8e4d6';
     g.fillRect(0, 0, w, h);
-    noise(g, w, h, rnd, 0.15);
-    g.fillStyle = '#87847a';
+    noise(g, w, h, rnd, 0.1);
+    g.fillStyle = '#b9b5a6';
     g.fillRect(0, h - 1, w, 1);
     for (let x = 3; x < w; x += 6) for (let y = 3; y < h; y += 6) {
-      g.fillStyle = '#9d9a8d';
+      g.fillStyle = '#d2cebf';
       g.fillRect(x, y, 1, 1);
     }
   }],
   asiento: [16, 16, (g, w, h, rnd) => {
-    g.fillStyle = '#2a3566';
+    // asientos rojos
+    g.fillStyle = '#c7342c';
     g.fillRect(0, 0, w, h);
-    const colors = ['#c23a33', '#e1b12c', '#4b8bd6'];
+    const colors = ['#a92a24', '#d8493f', '#b83029'];
     for (let y = 0; y < h; y += 4) for (let x = (y / 4) % 2 ? 2 : 0; x < w; x += 4) {
       g.fillStyle = colors[Math.floor(rnd() * 3)];
       g.fillRect(x, y, 2, 1);
     }
-    noise(g, w, h, rnd, 0.2);
+    noise(g, w, h, rnd, 0.12);
   }],
   vidrio: [16, 16, (g, w, h) => {
     const grad = g.createLinearGradient(0, 0, 0, h);
@@ -95,9 +98,11 @@ const DRAW = {
     g.fillRect(0, 22, w, 1);
   }],
   puerta: [32, 64, (g, w, h, rnd) => {
-    g.fillStyle = '#8f938f';
+    g.fillStyle = '#e6dfca';
     g.fillRect(0, 0, w, h);
-    noise(g, w, h, rnd, 0.18);
+    noise(g, w, h, rnd, 0.12);
+    g.fillStyle = '#17181b'; // marco negro de la ventana
+    g.fillRect(4, 5, w - 8, 26);
     g.fillStyle = '#0b1015';
     g.fillRect(5, 6, w - 10, 24);
     g.fillStyle = 'rgba(160,190,210,.25)';
@@ -106,7 +111,7 @@ const DRAW = {
     g.fillRect(0, 0, 2, h);
     g.fillStyle = '#111';
     for (let y = 2; y < h; y += 6) g.fillRect(0, y, 2, 3);
-    g.fillStyle = '#5d605d';
+    g.fillStyle = '#a9a28c';
     g.fillRect(w - 1, 0, 1, h);
   }],
   aviso: [64, 32, (g, w, h) => {
@@ -280,10 +285,13 @@ export function rayado(digit, order) {
   const key = `rayado:${digit}:${order}`;
   return pixelTexture(canvas(key, 32, 32, (g, w, h, rnd) => {
     g.clearRect(0, 0, w, h);
-    g.fillStyle = '#f3efe0';
-    for (let i = 0; i < order; i++) g.fillRect(3 + i * 4, 3, 2, 8);
     g.font = 'bold 22px monospace';
-    g.fillText(String(digit), 10, 29);
+    // carbón debajo y tiza encima: se lee sobre pared clara y sobre lo oscuro
+    for (const [color, d] of [['#17181c', 1], ['#f3efe0', 0]]) {
+      g.fillStyle = color;
+      for (let i = 0; i < order; i++) g.fillRect(3 + i * 4 + d, 3 + d, 2, 8);
+      g.fillText(String(digit), 10 + d, 29 + d);
+    }
     // trazo tembloroso: borrar píxeles al azar
     for (let i = 0; i < 70; i++) g.clearRect(Math.floor(rnd() * w), Math.floor(rnd() * h), 1, 1);
   }));
@@ -293,10 +301,12 @@ export function garabato(text) {
   const key = `garabato:${text}`;
   return pixelTexture(canvas(key, 64, 32, (g, w, h, rnd) => {
     g.clearRect(0, 0, w, h);
-    g.fillStyle = '#f3efe0';
     g.font = 'bold 9px monospace';
     const lines = text.split('\n');
-    lines.forEach((l, i) => g.fillText(l, 2, 11 + i * 10));
+    for (const [color, d] of [['#17181c', 1], ['#f3efe0', 0]]) {
+      g.fillStyle = color;
+      lines.forEach((l, i) => g.fillText(l, 2 + d, 11 + i * 10 + d));
+    }
     for (let i = 0; i < 90; i++) g.clearRect(Math.floor(rnd() * w), Math.floor(rnd() * h), 1, 1);
   }));
 }
@@ -304,9 +314,14 @@ export function garabato(text) {
 export function monito() {
   return pixelTexture(canvas('monito', 32, 32, (g) => {
     g.clearRect(0, 0, 32, 32);
-    g.strokeStyle = '#f3efe0';
     g.lineWidth = 1.5;
     const stick = (x, s) => {
+      for (const [color, d] of [['#17181c', 1], ['#f3efe0', 0]]) trazo(x + d, s, color, d);
+    };
+    const trazo = (x, s, color, d) => {
+      g.strokeStyle = color;
+      g.save();
+      g.translate(0, d);
       g.beginPath();
       g.arc(x, 9, 3 * s, 0, Math.PI * 2);
       g.moveTo(x, 12); g.lineTo(x, 22);
@@ -314,6 +329,7 @@ export function monito() {
       g.moveTo(x, 22); g.lineTo(x - 3, 29);
       g.moveTo(x, 22); g.lineTo(x + 3, 29);
       g.stroke();
+      g.restore();
     };
     stick(6, 1); stick(16, 1);
     g.setLineDash([2, 2]);

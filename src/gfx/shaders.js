@@ -497,7 +497,8 @@ void main() {
   vec3 dir = normalize(p - uCam);
   float cono = smoothstep(0.62, 0.95, dot(dir, uFwd));
   float lit = uFlash * cono * 3.2 / (1.0 + dist * dist * 0.1) + uGlow * 0.9 * step(aNace, 0.0) + uAmb;
-  vec3 carmin = vec3(0.95, 0.07, 0.11), marfil = vec3(1.0, 0.86, 0.80), oro = vec3(1.0, 0.72, 0.30);
+  // sangre, no flores: tres rojos (fresca, oscura, casi negra). Pedido de Andy: que dé miedo.
+  vec3 carmin = vec3(0.62, 0.02, 0.03), marfil = vec3(0.34, 0.01, 0.02), oro = vec3(0.16, 0.0, 0.01);
   vec3 c = aSeed.x < 0.55 ? carmin : aSeed.x < 0.86 ? marfil : oro;
   // la luz de afuera: junto al vidrio y en el aire; del otro lado, a contraluz
   float ax = abs(p.x);
@@ -507,10 +508,10 @@ void main() {
     // (una brasa que solo se apaga, nunca vuelve a encenderse)
     ventana = max(ventana, smoothstep(1.4, 2.3, ax));
     float t = max(uTime - aNace, 0.0);
-    lit += 1.6 * exp(-t * 0.9) * (0.6 + 0.4 * aSeed.z);
+    lit += 0.5 * exp(-t * 0.9) * (0.6 + 0.4 * aSeed.z);
   }
   if (aVel.w > 1.5) lit += 0.7 * exp(-max(uTime - aNace, 0.0) * 0.45); // traen luz de afuera; se les apaga al posarse
-  vColor = c * lit + (c * 0.7 + vec3(0.3, 0.22, 0.12)) * uVentana * ventana;
+  vColor = c * lit + c * 0.6 * uVentana * ventana;
   vA = alpha;
   vQ = position.xy;
   gl_Position = projectionMatrix * mv;

@@ -39,16 +39,17 @@ const TRAZOS = {
 // flash: cuánto la enciende el flash · dens: espesor · lavado: cuánto tiñe todo
 const PALETAS = {
   base: { niebla: [.05, .14, .7], ambO: .012, ambL: .3, flash: .5, dens: .15, lavado: .2, // ultramar + el carmín de la salida
-    cielo: { cenit: [.008, .02, .11], medio: [.11, .03, .24], horiz: [.8, .13, .1], corona: [1, .62, .3] } },
+    // cielo casi negro con el horizonte en rojo sangre (el atardecer rosado quitaba el miedo)
+    cielo: { cenit: [.002, .002, .008], medio: [.03, .004, .012], horiz: [.3, .018, .014], corona: [.62, .1, .05] } },
   // hora punta: luz de tubo fluorescente, aire limpio (el ámbar espeso parecía arena: es un metro)
   horaPunta: { niebla: [.62, .7, .8], ambO: .02, ambL: .1, flash: .3, dens: .035, lavado: .05 },
   vagonEscolar: { niebla: [0, .6, .68], ambO: .015, ambL: .3, flash: .5, dens: .15, lavado: .22, // turquesa
-    cielo: { cenit: [0, .04, .08], medio: [0, .22, .28], horiz: [.12, .8, .72], corona: [1, .9, .6] } },
+    cielo: { cenit: [0, .008, .016], medio: [0, .05, .065], horiz: [.03, .22, .2], corona: [.45, .4, .27] } },
   vagonOficinista: { niebla: [.46, .14, .75], ambO: .015, ambL: .3, flash: .5, dens: .14, lavado: .22, // violeta
-    cielo: { cenit: [.03, 0, .09], medio: [.26, .05, .42], horiz: [.95, .3, .55], corona: [1, .76, .9] } },
+    cielo: { cenit: [.006, 0, .018], medio: [.06, .01, .1], horiz: [.26, .06, .15], corona: [.45, .32, .4] } },
   // los que todavía no son vagón: su cielo queda listo (y se ve con ?mundo=feria / casa)
   vagonVendedor: { niebla: [.85, .42, .1], ambO: .012, ambL: .3, flash: .5, dens: .15, lavado: .2, // ámbar de feria + cobalto
-    cielo: { cenit: [0, .025, .12], medio: [.3, .12, .04], horiz: [1, .5, .1], corona: [1, .84, .48] } },
+    cielo: { cenit: [0, .005, .024], medio: [.07, .025, .008], horiz: [.3, .12, .02], corona: [.5, .38, .2] } },
   final: { niebla: [.9, .6, .55], ambO: .012, ambL: .3, flash: .5, dens: .13, lavado: .18, // alba: rosa y oro, con lavanda
     cielo: { cenit: [.07, .07, .22], medio: [.42, .22, .4], horiz: [1, .66, .48], corona: [1, .93, .78] } },
 };
