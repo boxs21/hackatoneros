@@ -36,7 +36,7 @@ export function agonia(ac, out, t, { personaje = '', fase = 'agarre' } = {}) {
   };
 
   // salida de la fase: en la caída se va tapando (se aleja) y deja eco de túnel
-  const salida = G(out, 1);
+  const salida = G(out, 0.88); // margen: los picos medidos offline llegaban a 1,2 antes del limitador
   const lejos = F(salida, 'lowpass', 9000, 0.6);
   if (fase === 'caida') {
     lejos.frequency.setValueAtTime(7000, t);
@@ -96,9 +96,9 @@ export function agonia(ac, out, t, { personaje = '', fase = 'agarre' } = {}) {
   const sopl = ac.createBufferSource();
   sopl.buffer = ruido(ac);
   sopl.loop = true;
-  // el ruido pierde casi toda su energía en los formantes angostos: entra 4,5 veces más fuerte
+  // el ruido pierde casi toda su energía en los formantes angostos: entra 3,8 veces más fuerte
   // (medido offline: sin esto el jadeo y la bocanada quedaban cerca de -43 dB)
-  sopl.connect(F(G(aire, 4.5), 'highpass', 900, 0.5));
+  sopl.connect(F(G(aire, 3.8), 'highpass', 900, 0.5));
   sopl.start(t, Math.random());
   sopl.stop(t + fin + 0.1);
 
@@ -133,7 +133,7 @@ export function agonia(ac, out, t, { personaje = '', fase = 'agarre' } = {}) {
     cerrarBoca(0, 0.2);
     nota([[0, 1.15], [0.07, 0.9], [0.24, 0.5]]);
     vol(voz.gain, [[0, 0.0001], [0.012, 0.9], [0.1, 0.55], [0.26, 0.0001], [0.4, 0.0001, 1], [0.5, 0.6], [0.7, 0.0001]]);
-    vol(aire.gain, [[0, 0.7], [0.06, 0.25], [0.26, 0.05], [0.4, 0.05, 1], [0.5, 0.9], [0.7, 0.0001]]);
+    vol(aire.gain, [[0, 0.3], [0.06, 0.2], [0.26, 0.05], [0.4, 0.05, 1], [0.5, 1.15], [0.7, 0.0001]]); // poco aire sobre el golpe (sumaban), mucho en la bocanada
     vol(tiembla.gain, [[0, 0.5], [0.26, 0.2], [0.7, 0.2]]);
     vol(entrada.gain, [[0, 1], [0.39, 1], [0.4, 0.12, 1], [0.7, 0.12]]); // la bocanada es casi puro aire
   } else if (fase === 'caida') {
