@@ -2,12 +2,12 @@
 // Variante elegida para cada sonido que tiene opciones (ver synth.js).
 // Se eligen escuchando en la Cabina de sonido y se pegan aquí.
 export const PRESETS = {
-  flash: 'B',
+  flash: 'A',
   multitud: 'A',
   frenazo: 'B',
   susto: 'A',
   vagon: 'A',
-  tunel: 'A',
+  tunel: 'B',
   casa: 'A',
 };
 
