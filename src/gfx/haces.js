@@ -104,7 +104,7 @@ void main() {
   float metros = (tb - ta) * length(M * ld);
   float d = acc / float(N) * metros;
   // se satura suave: desde adentro del haz no se vuelve una niebla que lo tape todo
-  vec3 c = uColor * (1.0 - exp(-d * uFuerza * vI)) * 0.45;
+  vec3 c = uColor * (1.0 - exp(-d * uFuerza * vI)) * 0.2; // tope bajo: son aire, no una linterna
   gl_FragColor = vec4(c, 1.0);
 }`;
 

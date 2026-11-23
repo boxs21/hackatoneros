@@ -538,7 +538,7 @@ export function createGfx(ctx) {
     const c = mundo.u.uCorona.value;
     haces.mesh.visible = fuerza > .01;
     haces.u.uColor.value.copy(c);
-    haces.u.uFuerza.value = fuerza * 1.6;
+    haces.u.uFuerza.value = fuerza * .6; // suaves: mirando a lo largo del pasillo se suman los 8 paños
     haces.hoyos(hoyosLista, hay ? nHoyos : 0);
     part.polvoU.uHaz.value.copy(c).multiplyScalar(fuerza * .9);
     part.petaloU.uVentana.value.copy(c).multiplyScalar(fuerza * 1.1);
