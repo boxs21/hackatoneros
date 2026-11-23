@@ -8,20 +8,23 @@
 //
 //   ctx.audio.sfx('flash', { cerca: 0.6 })          flash + la multitud (cerca: 0 a 1)
 //   ctx.audio.sfx('frenazo' | 'puertas' | 'pitido' | 'empujon' | 'paso' | 'desaparece'
-//                 | 'atrapado' | 'susto' | 'celular' | 'notificacion' | 'ui' | 'latido' | 'crujido')
+//                 | 'atrapado' | 'susto' | 'celular' | 'notificacion' | 'ui' | 'latido' | 'crujido' | 'anuncio'
+//                 | 'vidrio' | 'grito' (opts.personaje: 'Escolar' | 'Oficinista' | 'Señora' | 'Vendedor'))
 //   ctx.audio.voz('vendedor', 'a-luca', { radio, position })   -> { duracion, fin, stop }
 //   ctx.audio.ambiente('anden' | 'vagon' | 'tunel' | 'casa' | 'multitud' | null)
 //   ctx.audio.silencio()                              corte total y seco
 //   ctx.audio.posicional('vendedor' | 'borrados', pos, { camera: ctx.camera })
-//   ctx.audio.musica('casa' | null)
+//   ctx.audio.musica('casa' | 'menu' | null)        'menu' suena desde public/audio/musica/
 import { receta, habla } from './synth.js';
 import { PRESETS, MEZCLA, VOZ_RADIO } from './presets.js';
 
 // Archivos presentes en public/audio/, por nombre sin extensión.
 const urls = import.meta.glob('/public/audio/**/*.{ogg,mp3,wav,m4a}', { eager: true, query: '?url', import: 'default' });
-const ARCHIVOS = new Map(
-  Object.entries(urls).map(([ruta, url]) => [ruta.split('/').pop().replace(/\.\w+$/, '').toLowerCase(), url]),
-);
+const nombreDe = (ruta) => ruta.split('/').pop().replace(/\.\w+$/, '').toLowerCase();
+const largos = ([ruta]) => ruta.includes('/musica/');
+// Lo que está en public/audio/musica/ es largo: se reproduce directo, sin cargarlo entero en memoria.
+const DIRECTO = new Map(Object.entries(urls).filter(largos).map(([ruta, url]) => [nombreDe(ruta), url]));
+const ARCHIVOS = new Map(Object.entries(urls).filter((e) => !largos(e)).map(([ruta, url]) => [nombreDe(ruta), url]));
 const buffers = new Map();
 
 let ac = null;
@@ -47,7 +50,16 @@ function avisar(tipo, nombre) {
   console.warn(`[audio] no existe ${tipo} "${nombre}"`);
 }
 
+// Ejecuta fn en el primer click, toque o tecla (lo que el navegador acepta como gesto).
+function alPrimerGesto(fn) {
+  const una = () => { removeEventListener('pointerdown', una, true); removeEventListener('keydown', una, true); fn(); };
+  addEventListener('pointerdown', una, true);
+  addEventListener('keydown', una, true);
+}
+
 function armar() {
+  // Si el contexto nace bloqueado, se despierta solo con el primer gesto.
+  if (ac.state === 'suspended') alPrimerGesto(() => { ac.resume().catch((err) => console.error('[audio] resume', err)); });
   master = ac.createGain();
   master.gain.value = MEZCLA.master;
   master.connect(ac.destination);
@@ -191,7 +203,20 @@ function cambiarBucle(grupo, nombre, opts, actual) {
   g.gain.linearRampToValueAtTime(volume, t + Math.max(fade, 0.01));
   const buf = buffers.get(nombre);
   let parar;
-  if (buf) {
+  if (DIRECTO.has(nombre)) {
+    const el = new Audio(DIRECTO.get(nombre));
+    el.loop = opts.loop ?? true;
+    ac.createMediaElementSource(el).connect(g);
+    // Intenta sonar de inmediato. Si el navegador lo bloquea (aún no hubo gesto
+    // del jugador), suena en el primer click o tecla, sin esperar nada más.
+    el.play().catch((err) => {
+      if (err?.name !== 'NotAllowedError') { console.error(`[audio] no se pudo reproducir ${nombre}`, err); return; }
+      alPrimerGesto(() => { if (!el.dataset.fin) el.play().catch((e) => console.error(`[audio] no se pudo reproducir ${nombre}`, e)); });
+    });
+    const pausar = el.pause.bind(el);
+    el.pause = () => { el.dataset.fin = '1'; pausar(); };
+    parar = (cuando) => setTimeout(() => el.pause(), Math.max(0, cuando - ac.currentTime) * 1000 + 30);
+  } else if (buf) {
     const s = tocarBuffer(buf, g, { loop: opts.loop ?? true });
     parar = (cuando) => s.stop(cuando);
   } else {
@@ -239,6 +264,13 @@ export const audio = {
   // Devuelve { duracion, fin (promesa), stop }.
   voz(personaje, frase, opts = {}) {
     if (!ac) return NADA;
+    // El altavoz del tren: suena una campanilla, la voz entra 1,1 s después y sale por radio.
+    // Un subtítulo nuevo no lo calla: solo lo cortan silencio() o stopAll().
+    const altavoz = slug(personaje) === 'altavoz';
+    if (altavoz) {
+      this.sfx('anuncio', { volume: 0.8 });
+      opts = { radio: true, ...opts, delay: (opts.delay ?? 0) + 1.1 };
+    }
     const g = canal('voz', opts);
     let dest = g;
     if (opts.position) { dest = espacial(g, opts.position, opts).nodo; seguirOyente(); }
@@ -253,7 +285,7 @@ export const audio = {
     }
     const h = registrar(g);
     const fin = new Promise((r) => setTimeout(() => { h.stop(0.03); r(); }, (duracion + (opts.delay ?? 0)) * 1000 + 60));
-    return { duracion, fin, stop: h.stop };
+    return { duracion: duracion + (opts.delay ?? 0), fin, stop: altavoz ? () => {} : h.stop };
   },
 
   // Fondo en bucle; cambia con fundido cruzado. null lo apaga. opts: volume, fade (s).
@@ -300,7 +332,7 @@ export const audio = {
   // La cámara que hace de oídos. Alternativa a pasar { camera } en posicional.
   oyente(camera) { oyente = camera; if (ac) seguirOyente(); },
 
-  // Música en bucle. Solo existe 'casa'. null la apaga. opts: volume, fade (s).
+  // Música en bucle: 'casa' (generada) o un archivo de public/audio/musica/. null la apaga. opts: volume, fade (s).
   musica(name, opts = {}) {
     if (!ac) return;
     if (name === musNombre && musActual) return;

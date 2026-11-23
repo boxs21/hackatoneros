@@ -366,6 +366,58 @@ const SFX = {
     });
     return 0.5;
   },
+  // Campanilla antes del anuncio del altavoz: cuatro notas propias, estilo andén japonés.
+  anuncio(ac, out, t) {
+    [[0, 76], [0.19, 80], [0.38, 83], [0.62, 88]].forEach(([d, m]) => {
+      const f = 440 * 2 ** ((m - 69) / 12);
+      [[1, 0.22], [2, 0.07], [3.01, 0.03]].forEach(([r, a], i) => {
+        const g = G(ac, out, 0);
+        env(g.gain, t + d, 1e-4, [0.005, a], [1.1 / (1 + i * 0.6), 1e-4, 'e']);
+        O(ac, g, 'sine', f * r, t + d, t + d + 1.2);
+      });
+    });
+    return 1.7;
+  },
+  // Ventana que revienta: golpe, astillas agudas cayendo y viento del túnel entrando.
+  vidrio(ac, out, t) {
+    golpe(ac, out, t, { f0: 160, f1: 45, dur: 0.12, vol: 0.55 });
+    rafaga(ac, out, t, { tipo: 'highpass', f: 2600, dur: 0.16, vol: 0.42, at: 0.001 });
+    for (let i = 0; i < 16; i++) {
+      const d = Math.random() ** 1.6 * 0.5, f = rnd(2400, 7800);
+      const g = G(ac, P(ac, out, rnd(-0.9, 0.9)), 0);
+      env(g.gain, t + d, rnd(0.05, 0.16), [rnd(0.04, 0.16), 1e-4, 'e']);
+      O(ac, g, 'sine', f, t + d, t + d + 0.2);
+      O(ac, G(ac, g, 0.4), 'sine', f * 1.51, t + d, t + d + 0.2);
+    }
+    const v = G(ac, out, 0);
+    env(v.gain, t + 0.08, 1e-4, [0.25, 0.4], [0.5, 0.22], [0.6, 1e-4, 'e']);
+    const bp = F(ac, v, 'bandpass', 500, 0.8);
+    env(bp.frequency, t + 0.08, 900, [0.4, 380], [0.95, 260]);
+    N(ac, bp, t + 0.08, t + 1.5);
+    return 1.5;
+  },
+  // Grito corto que se corta en seco. personaje: Escolar, Oficinista, Señora o Vendedor.
+  grito(ac, out, t, { personaje = '' } = {}) {
+    const quien = String(personaje).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const f0 = { escolar: 640, oficinista: 330, senora: 540, vendedor: 410 }[quien] ?? 480;
+    const D = 0.46;
+    const g = G(ac, out, 0);
+    env(g.gain, t, 1e-4, [0.03, 0.75], [D - 0.034, 0.85], [0.004, 0, 's']);
+    const a = F(ac, g, 'bandpass', 1050, 4);
+    const b = F(ac, G(ac, g, 0.7), 'bandpass', 1750, 5);
+    const c = F(ac, G(ac, g, 0.35), 'bandpass', 3100, 6);
+    [1, 1.007].forEach((des) => {
+      const o = ac.createOscillator();
+      o.type = 'sawtooth';
+      env(o.frequency, t, f0 * 0.82 * des, [0.08, f0 * 1.12 * des], [D - 0.08, f0 * des]);
+      // Aspereza: la voz se quiebra con un temblor rápido.
+      O(ac, G(ac, o.frequency, f0 * 0.045), 'sine', 34, t, t + D);
+      o.connect(a); o.connect(b); o.connect(c);
+      o.start(t); o.stop(t + D + 0.01);
+    });
+    N(ac, F(ac, G(ac, g, 0.16), 'bandpass', 2400, 1.5), t, t + D);
+    return D;
+  },
   ui(ac, out, t) {
     rafaga(ac, out, t, { tipo: 'highpass', f: 2800, dur: 0.01, vol: 0.4 });
     return 0.03;
@@ -424,6 +476,37 @@ const vagon = {
     });
   },
 };
+
+// C · Tren japonés: suave y limpio. El motor "canta" en escalones al acelerar,
+// los rieles hacen ga-tan… go-ton y la gente casi no habla.
+vagon.C = (ac, out, t, { gente = true } = {}) => bucle(ac, out, (k) => {
+  k.noise(F(ac, G(ac, k.salida, 0.55), 'lowpass', 110), t, 'marron');
+  k.noise(F(ac, G(ac, k.salida, 0.022), 'bandpass', 2600, 0.4), t); // aire acondicionado
+  // Motor: un ciclo de 16 s. Sube en dos escalones, se sostiene bajito y baja.
+  const CICLO = 16;
+  k.ritmo((x) => {
+    const g = G(ac, F(ac, k.salida, 'lowpass', 1900), 0);
+    env(g.gain, x, 1e-4, [0.4, 0.05], [6.4, 0.05], [1.2, 0.014], [4, 0.014], [0.5, 0.04], [3.2, 0.03], [0.3, 1e-4, 'e']);
+    [1, 2.01].forEach((arm, i) => {
+      const o = O(ac, G(ac, g, i ? 0.35 : 1), i ? 'square' : 'sawtooth', 180 * arm, x, x + CICLO);
+      const f = o.frequency;
+      f.setValueAtTime(180 * arm, x);
+      f.exponentialRampToValueAtTime(520 * arm, x + 3.6);
+      f.setValueAtTime(300 * arm, x + 3.6); // el escalón: baja de golpe y vuelve a subir
+      f.exponentialRampToValueAtTime(720 * arm, x + 7);
+      f.setValueAtTime(720 * arm, x + 12);
+      f.exponentialRampToValueAtTime(230 * arm, x + 16);
+    });
+  }, CICLO, t + 0.1);
+  // Rieles: dos pares de golpes, ga-tan… go-ton.
+  k.ritmo((x) => {
+    [[0, 105, 0.34], [0.15, 98, 0.28], [0.62, 92, 0.3], [0.77, 86, 0.24]].forEach(([d, f, v]) => {
+      golpe(ac, k.salida, x + d, { f0: f, f1: f * 0.55, dur: 0.06, vol: v });
+      rafaga(ac, k.salida, x + d, { f: 1700, q: 2, dur: 0.02, vol: v * 0.22 });
+    });
+  }, 1.9, t + 0.4);
+  if (gente) murmullo(ac, k, t, { voces: 5, vol: 0.16 });
+});
 
 const tunel = {
   // A · Casi nada: aire grave apenas audible y un crujido lejano cada tanto.

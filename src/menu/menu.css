@@ -1,0 +1,9 @@
+/* MENÚ DE INICIO. Dueño: Andy.
+   Capa transparente sobre el vagón 3D. Todo el menú se dibuja en un lienzo de
+   320x240 con píxeles duros, igual que el juego. */
+.menu { position: absolute; inset: 0; z-index: 5; overflow: hidden; user-select: none; cursor: default; }
+.menu-lienzo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+
+/* Salida: se apaga todo y empieza el viaje. */
+.menu-telon { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 1.1s ease-in; }
+.menu[data-fase="saliendo"] .menu-telon { opacity: 1; }

@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import { createFlash } from '../mechanics/flash.js';
 import { createMultitud } from '../mechanics/multitud.js';
+import { REGALOS, dar, mostrarRegalos, tiene } from '../mechanics/regalos.js';
 import { createPasajeros, updatePasajeros } from '../world/pasajeros.js';
 import { setupVagon, walkVagon } from '../world/vagonEscena.js';
 
@@ -58,10 +59,10 @@ const RESPUESTAS = {
   ],
 };
 // Ingrediente obligatorio: «Queda una pura». El Escolar venía contando las estaciones.
+// El altavoz no alcanza a terminar: a media frase se corta la voz y se va la luz.
 const FINAL = [
   'ESCOLAR: ¡Queda una pura estación pa’ Casa!',
   'ALTAVOZ: Próxima estación… Ca… sa… —',
-  'SEÑORA: ¿Qué fue eso?',
 ];
 // Misión en pantalla (lista de Valentín, src/ui/misiones.js): a quién ir ahora.
 const MISION = {
@@ -72,6 +73,9 @@ const MISION = {
 };
 // Apertura de cine: puertas que se cierran y la cámara gira hacia el pasillo.
 const CINE = 3.8; // s sin control al empezar
+// Segundos desde que empieza a sonar el altavoz hasta el frenazo. El corte seco
+// llega 1,85 s después (final de hora punta + apagón), justo sobre el "Ca—".
+const FRENAZO_TRAS_ALTAVOZ = 1.5;
 const RECLAMOS = ['¡Permiso!', '¡Oiga, no empuje!', 'Uf…', 'Córrase pa’ dentro…', '¡Ya po!', 'Con permiso, con permiso…'];
 const MURMULLOS = ['…y llegué tarde otra vez…', '¿Alguien tiene hora?', '…mañana también, sí…', '…este tren va más lento que nunca…'];
 
@@ -124,6 +128,9 @@ export default {
     ctx.camera.rotation.y = S.yawDoor;
     S.titleAt = 1.9;
     S.titleUntil = 4.4;
+    // Partes sin nada: el celular (y lo demás) te lo van pasando los cuatro.
+    mostrarRegalos(ctx, { reiniciar: true });
+    scene.celular.group.visible = false;
     INTRO.forEach((text) => S.queue.push({ text }));
     S.queue[0].delay = CINE + .3;
     ctx.audio.ambiente('vagon');
@@ -219,7 +226,7 @@ export default {
       cam.rotation.y += diff * Math.min(1, dt * .9);
     }
 
-    if (ctx.input.pressed('KeyF')) flash.fire(now);
+    if (ctx.input.pressed('KeyF') && tiene(ctx, 'celular')) flash.fire(now);
     scene.light(flash.level(now), dt, flash);
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .6;
 
@@ -305,7 +312,30 @@ function responder(ctx, pasajero) {
     if (S !== yo) return; // se salió o reinició la escena mientras elegía
     S.choosing = false;
     ctx.memoria[pasajero.name] = i;
-    S.queue.push({ text: opciones[i][1], speaker: pasajero, onEnd: () => nextBeat(ctx) });
+    S.queue.push({ text: opciones[i][1], speaker: pasajero });
+    entregar(ctx, pasajero);
+  });
+}
+
+// Cada pasajero te pasa algo que después sirve (mechanics/regalos.js). Estira el brazo,
+// lo recibes y recién ahí se puede seguir.
+function entregar(ctx, pasajero) {
+  const r = REGALOS[pasajero.name];
+  if (!r) { S.queue.push({ text: '…', onEnd: () => nextBeat(ctx) }); return; }
+  S.queue.push({
+    text: r.linea,
+    speaker: pasajero,
+    onStart: () => { pasajero.armR.rotation.x = -1.25; },
+  });
+  S.queue.push({
+    text: `Recibiste: ${r.nombre.toLowerCase()} ${r.de} · ${r.uso}`,
+    ms: 2400,
+    onStart: () => {
+      pasajero.armR.rotation.x = 0;
+      dar(ctx, pasajero.name);
+      if (r.id === 'celular') S.scene.celular.group.visible = true;
+    },
+    onEnd: () => nextBeat(ctx),
   });
 }
 
@@ -335,14 +365,16 @@ function nextBeat(ctx) {
   // altavoz, parpadeo, alguien pregunta… y frenazo
   FINAL.forEach((text, i) => S.queue.push({
     text,
-    speaker: i === 0 ? S.passengers.find((p) => p.name === 'Escolar') : i === 2 ? S.passengers.find((p) => p.name === 'Señora') : null,
+    speaker: i === 0 ? S.passengers.find((p) => p.name === 'Escolar') : null,
+    // La campanilla y la voz del altavoz las pone el motor de audio al mostrar el subtítulo.
     onStart: i === 1 ? () => {
-      ctx.audio.sfx('pitido');
-      const t = S.t + 1.6;
-      // seguridad (DISENO.md): solo 2 bajones lentos, bien separados (< 3 destellos por segundo)
-      S.flickerAt = [0, .18, .9, 1.08].map((d, k) => ({ t: t + d, off: k % 2 === 0 }));
+      // La campanilla la pone el motor de audio al mostrar el subtítulo del altavoz.
+      // seguridad (DISENO.md): solo 2 bajones lentos, bien separados (< 3 destellos por segundo),
+      // y caben antes del frenazo.
+      const t = S.t + .25;
+      S.flickerAt = [0, .18, .8, .98].map((d, k) => ({ t: t + d, off: k % 2 === 0 }));
+      S.endAt = S.t + FRENAZO_TRAS_ALTAVOZ;
     } : null,
-    onEnd: i === FINAL.length - 1 ? () => { S.endAt = S.t + .6; } : null,
   }));
 }
 

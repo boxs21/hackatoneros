@@ -6,7 +6,7 @@ export const PRESETS = {
   multitud: 'A',
   frenazo: 'B',
   susto: 'A',
-  vagon: 'A',
+  vagon: 'C',
   tunel: 'B',
   casa: 'A',
 };
