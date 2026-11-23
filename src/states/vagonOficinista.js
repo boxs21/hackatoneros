@@ -3,8 +3,12 @@
 // Jugabilidad:
 // - El vagón se partió: no hay piso, abajo solo hay vías y una luz roja. Quedan
 //   pedazos sueltos (piso, asientos, una puerta, maletas, un carro que flota).
-// - [Espacio] salta. Está oscuro: los bordes amarillos se ven solo de cerca.
-//   El flash [F] te muestra todo el camino por un instante. Miras, memorizas, saltas.
+// - [Espacio] salta. Está oscuro: los bordes amarillos casi no se ven.
+// - "Desbloquear la visión": cada foto [F] deja iluminados para siempre los bordes
+//   de los pedazos que tienes adelante (hasta REVELA m). Para ver los siguientes,
+//   otra foto. El flash sigue siendo la mecánica, pero lo que ya viste no se pierde.
+// - Screamer: la primera vez que pisas el pedazo SCREAMER, una cara se te tira encima
+//   (no te atrapa, solo asusta).
 // - Caer no duele: vuelves al último pedazo firme en un instante.
 // - Si te quedas quieto mucho rato en un pedazo, algo sube del vacío a buscarte.
 // - Al fondo, el maletín del Oficinista flota junto a la puerta. Sigue el Vendedor.
@@ -36,6 +40,9 @@ const PEDAZOS = [
   [-.2, -9.9, 1.2, .9, .3, 'puerta'],
   [0, -11.8, 4.6, 2.2, 0, 'piso', { fin: true }],
 ];
+const REVELA = 8; // m: hasta dónde deja iluminados los bordes cada foto
+const CERCA = 1.5; // m: sin foto, el borde solo se ve si estás encima
+const SCREAMER = 8; // índice en PEDAZOS: el piso de la mitad, después del carro que flota
 const QUIETO = 7; // s quieto en un pedazo antes de que suba algo (tiempo para mirar y calcular)
 const AGARRA = 11; // s quieto: te agarra
 
@@ -44,7 +51,7 @@ let S = null;
 export default {
   id: 'vagonOficinista',
   next: 'vagonVendedor',
-  hint: 'Salta con Espacio. Usa el flash [F] para ver los pedazos antes de saltar.',
+  hint: 'Saca una foto [F] hacia adelante: los pedazos que alumbras quedan marcados. Salta con Espacio.',
   autoAdvance: true,
   enter(ctx, data = {}) {
     ctx.audio.ambiente('tunel');
@@ -148,11 +155,13 @@ export default {
       caught: -1, done: false, leaveAt: 0, blackT: 0, bestZ: 11 };
     if (ctx.demo) window.__S = S;
     S.bolsillo = crearBolsillo(ctx);
-    S.flash = createFlash({ onFire() { ctx.audio.sfx('flash', { multitud: false }); } });
+    S.mira = new THREE.Vector3();
+    S.flash = createFlash({ onFire() { ctx.audio.sfx('flash', { multitud: false }); S.revelar = true; } });
+    S.screamT = -1;
     ctx.misiones?.set('Cruza el vagón roto saltando [Espacio]');
     S.lines = [
       [.6, 'El vagón se partió. Abajo no hay piso… solo las vías.', 3200],
-      [4.2, '[Espacio] saltar · [F] el flash te muestra dónde pisar', 4200],
+      [4.2, '[Espacio] saltar · [F] lo que alumbras queda a la vista', 4200],
     ];
   },
   update(dt, ctx) {
@@ -164,6 +173,20 @@ export default {
     while (S.lines.length && S.t >= S.lines[0][0]) {
       const [, text, ms] = S.lines.shift();
       ctx.hud.subtitle(text, ms);
+    }
+
+    // screamer: una cara se te tira encima; no te atrapa, sigues donde estabas
+    if (S.screamT >= 0) {
+      S.screamT += dt;
+      const shown = caughtFrame(scene, scare, cam, dt, S.screamT);
+      if (shown > .55) {
+        S.screamT = -1;
+        scare.group.visible = false;
+        scene.overlay.u.uCaught.value = 0;
+        scene.overlay.u.uBlack.value = 0;
+        ctx.hud.subtitle('…¿Qué fue eso?', 2000);
+      }
+      return;
     }
 
     // te agarró lo que subió: susto y vuelves al último pedazo firme
@@ -206,9 +229,29 @@ export default {
     const glow = flash.glow(now);
     scene.light(level, dt, flash);
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .6;
+    // la foto "desbloquea" lo que tienes adelante: esos bordes quedan iluminados
+    if (S.revelar && level >= 1) {
+      S.revelar = false;
+      cam.getWorldDirection(S.mira);
+      for (const pl of platforms) {
+        const dx = pl.cx - cam.position.x;
+        const dz = pl.cz - cam.position.z;
+        const d = Math.hypot(dx, dz);
+        if (d < REVELA && (d < 1.5 || (dx * S.mira.x + dz * S.mira.z) / d > .35)) pl.visto = true;
+      }
+    }
     for (const pl of platforms) {
       const d = Math.hypot(pl.cx - cam.position.x, pl.cz - cam.position.z);
-      pl.edgeMat.opacity = Math.max(THREE.MathUtils.clamp((4.6 - d) / 2.2, 0, 1), level, glow * .8);
+      const cerca = THREE.MathUtils.clamp((CERCA - d) / .8, 0, 1);
+      pl.edgeMat.opacity = Math.max(pl.visto ? .85 : 0, cerca, level, glow * .8);
+    }
+    // screamer: la primera vez que aterrizas en ese pedazo
+    if (!S.screamed && parkour.grounded && parkour.ground === platforms[SCREAMER]) {
+      S.screamed = true;
+      S.screamT = 0;
+      scare.show(null, cam, 'negro');
+      ctx.audio.sfx('susto', { volume: 1 });
+      ctx.audio.sfx('atrapado');
     }
     S.reloj.update(dt);
     S.maletin.rotation.y += dt * .4;
