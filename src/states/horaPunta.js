@@ -62,11 +62,14 @@ const RESPUESTAS = {
   ],
 };
 // Ingrediente obligatorio: «Queda una pura». El Escolar venía contando las estaciones.
+// El altavoz no alcanza a terminar: a media frase se corta la voz y se va la luz.
 const FINAL = [
   'ESCOLAR: ¡Queda una pura estación pa’ Casa!',
   'ALTAVOZ: Próxima estación… Ca… sa… —',
-  'SEÑORA: ¿Qué fue eso?',
 ];
+// Segundos desde que empieza a sonar el altavoz hasta el frenazo. El corte seco
+// llega 1,85 s después (final de hora punta + apagón), justo sobre el "Ca—".
+const FRENAZO_TRAS_ALTAVOZ = 1.5;
 const RECLAMOS = ['¡Permiso!', '¡Oiga, no empuje!', 'Uf…', 'Córrase pa’ dentro…', '¡Ya po!', 'Con permiso, con permiso…'];
 const MURMULLOS = ['…y llegué tarde otra vez…', '¿Alguien tiene hora?', '…mañana también, sí…', '…este tren va más lento que nunca…'];
 
@@ -275,13 +278,13 @@ function nextBeat(ctx) {
   // los cuatro: altavoz, parpadeo, alguien pregunta… y frenazo
   FINAL.forEach((text, i) => S.queue.push({
     text,
-    speaker: i === 0 ? S.passengers.find((p) => p.name === 'Escolar') : i === 2 ? S.passengers.find((p) => p.name === 'Señora') : null,
+    speaker: i === 0 ? S.passengers.find((p) => p.name === 'Escolar') : null,
+    // La campanilla y la voz del altavoz las pone el motor de audio al mostrar el subtítulo.
     onStart: i === 1 ? () => {
-      ctx.audio.sfx('pitido');
-      const t = S.t + 1.6;
+      const t = S.t + 1.0;
       S.flickerAt = [0, .08, .3, .36, .5, .56].map((d, k) => ({ t: t + d, off: k % 2 === 0 }));
+      S.endAt = S.t + FRENAZO_TRAS_ALTAVOZ;
     } : null,
-    onEnd: i === FINAL.length - 1 ? () => { S.endAt = S.t + .6; } : null,
   }));
 }
 

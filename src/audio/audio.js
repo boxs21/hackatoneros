@@ -8,7 +8,7 @@
 //
 //   ctx.audio.sfx('flash', { cerca: 0.6 })          flash + la multitud (cerca: 0 a 1)
 //   ctx.audio.sfx('frenazo' | 'puertas' | 'pitido' | 'empujon' | 'paso' | 'desaparece'
-//                 | 'atrapado' | 'susto' | 'celular' | 'notificacion' | 'ui' | 'latido' | 'crujido')
+//                 | 'atrapado' | 'susto' | 'celular' | 'notificacion' | 'ui' | 'latido' | 'crujido' | 'anuncio')
 //   ctx.audio.voz('vendedor', 'a-luca', { radio, position })   -> { duracion, fin, stop }
 //   ctx.audio.ambiente('anden' | 'vagon' | 'tunel' | 'casa' | 'multitud' | null)
 //   ctx.audio.silencio()                              corte total y seco
@@ -263,6 +263,13 @@ export const audio = {
   // Devuelve { duracion, fin (promesa), stop }.
   voz(personaje, frase, opts = {}) {
     if (!ac) return NADA;
+    // El altavoz del tren: suena una campanilla, la voz entra 1,1 s después y sale por radio.
+    // Un subtítulo nuevo no lo calla: solo lo cortan silencio() o stopAll().
+    const altavoz = slug(personaje) === 'altavoz';
+    if (altavoz) {
+      this.sfx('anuncio', { volume: 0.8 });
+      opts = { radio: true, ...opts, delay: (opts.delay ?? 0) + 1.1 };
+    }
     const g = canal('voz', opts);
     let dest = g;
     if (opts.position) { dest = espacial(g, opts.position, opts).nodo; seguirOyente(); }
@@ -277,7 +284,7 @@ export const audio = {
     }
     const h = registrar(g);
     const fin = new Promise((r) => setTimeout(() => { h.stop(0.03); r(); }, (duracion + (opts.delay ?? 0)) * 1000 + 60));
-    return { duracion, fin, stop: h.stop };
+    return { duracion: duracion + (opts.delay ?? 0), fin, stop: altavoz ? () => {} : h.stop };
   },
 
   // Fondo en bucle; cambia con fundido cruzado. null lo apaga. opts: volume, fade (s).
