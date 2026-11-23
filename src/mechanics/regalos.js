@@ -2,12 +2,13 @@
 // Queda en ctx.memoria.regalos = { celular: true, … } y se muestra arriba a la izquierda.
 // Si se entra directo a una escena (modo demo), se asume que te dieron todo.
 export const REGALOS = {
+  // Ingrediente obligatorio: guiño a 31 Minutos. El Escolar te regala su calcetín con rombos.
   Escolar: {
-    id: 'llavero',
-    nombre: 'Llavero con luz',
+    id: 'calcetin',
+    nombre: 'Calcetín con rombos',
     de: 'del escolar',
-    uso: 'alumbra tus pies a oscuras',
-    linea: 'ESCOLAR: Tome mi llavero con luz. Pa’ no perderse.',
+    uso: 'de la suerte',
+    linea: 'ESCOLAR: Gracias por la compañía. Tome, mi calcetín con rombos, es de la suerte… ¡Calcetín con rombos maaan!',
   },
   Oficinista: {
     id: 'celular',
@@ -36,7 +37,7 @@ export const REGALOS = {
 
 const ORDEN = ['Escolar', 'Señora', 'Vendedor', 'Oficinista']; // el orden en que te los dan
 const VISIBLE = new Set(['horaPunta', 'borrados', 'vagonEscolar', 'vagonOficinista', 'vagonVendedor']);
-const TODOS = { celular: true, llavero: true, completo: true, chocolate: true };
+const TODOS = { celular: true, calcetin: true, completo: true, chocolate: true };
 
 let box = null;
 let usados = new Set();

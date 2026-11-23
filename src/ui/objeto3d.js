@@ -103,16 +103,64 @@ function chocolate() {
   return g;
 }
 
+// Calcetín con rombos (guiño a 31 Minutos, hecho por nosotros): rojo con rombos
+// amarillos y azules, parado como títere, con ojos.
+function rombos() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 32;
+  const x = c.getContext('2d');
+  x.fillStyle = '#c8322b';
+  x.fillRect(0, 0, 32, 32);
+  const colores = ['#f2c230', '#2f6fd6'];
+  for (let j = 0; j < 4; j++) {
+    for (let i = 0; i < 4; i++) {
+      x.fillStyle = colores[(i + j) % 2];
+      const cx = i * 8 + 4;
+      const cy = j * 8 + 4;
+      x.beginPath();
+      x.moveTo(cx, cy - 4); x.lineTo(cx + 3, cy); x.lineTo(cx, cy + 4); x.lineTo(cx - 3, cy);
+      x.closePath();
+      x.fill();
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = THREE.NearestFilter;
+  t.minFilter = THREE.NearestFilter;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
+function calcetin() {
+  const g = new THREE.Group();
+  const tex = rombos();
+  const tela = mat(0xffffff, { map: tex });
+  const cana = new THREE.Mesh(new THREE.CylinderGeometry(.24, .27, 1.1, 8), tela);
+  cana.position.y = -.1;
+  const pie = box(.5, .3, .72, tela, 0, .5, .14); // el pie doblado: la "boca"
+  pie.rotation.x = -.2;
+  g.add(cana, pie);
+  g.add(box(.5, .16, .3, mat(0xf6f0dc), 0, -.62, 0)); // elástico blanco
+  const ojo = mat(0xffffff);
+  const pupila = mat(0x0b0b0b);
+  for (const ox of [-.12, .12]) {
+    g.add(box(.12, .12, .04, ojo, ox, .66, .48));
+    g.add(box(.05, .05, .02, pupila, ox, .66, .51));
+  }
+  return g;
+}
+
 function otro() {
   const g = new THREE.Group();
   g.add(box(.8, .8, .8, mat(0xf2b705)));
   return g;
 }
 
-const FABRICA = { completo, celular, llavero, chocolate, otro };
+const FABRICA = { completo, celular, llavero, chocolate, calcetin, otro };
 
 export function tipoDe(nombre) {
   const n = String(nombre).toLowerCase();
+  if (n.includes('calcet')) return 'calcetin';
   for (const k of ['completo', 'celular', 'llavero', 'chocolate']) if (n.includes(k)) return k;
   return 'otro';
 }
@@ -143,7 +191,7 @@ export function createObjeto3d(canvas) {
   let last = 0;
   let inclinacion = 0;
   // cuánto se inclina cada uno hacia la cámara para que se vea lo importante
-  const INCLINA = { completo: .35, chocolate: .55, celular: 0, llavero: .1, otro: .3 };
+  const INCLINA = { completo: .35, chocolate: .55, celular: 0, llavero: .1, calcetin: .1, otro: .3 };
 
   function loop(now) {
     const dt = Math.min(.05, (now - last) / 1000 || 0);

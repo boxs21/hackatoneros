@@ -38,7 +38,7 @@ Suena una vez… y el tren frena en el túnel. Se apaga todo. **A la gente solo 
 ### Lo central del juego
 
 - **El dilema del flash:** es tu única forma de ver, pero cada foto acerca a los borrados.
-- **Los objetos de los pasajeros cambian la partida:** el celular del oficinista (flash), el llavero con luz del escolar (alumbra tus pies), el chocolate del vendedor (te salva una vez) y el **completo italiano** de la señora (lo tiras y los borrados se van al olor).
+- **Los objetos de los pasajeros cambian la partida:** el celular del oficinista (flash), el calcetín con rombos del escolar (de la suerte, nuestro guiño a 31 Minutos), el chocolate del vendedor (te salva una vez) y el **completo italiano** de la señora (lo tiras y los borrados se van al olor).
 - **El sonido es parte de la mecánica:** el silencio del apagón y la voz del vendedor que te guía en la oscuridad. Se recomienda jugar con audífonos.
 - **Fallar no duele:** si te atrapan, reinicias el vagón en menos de un segundo; a los 30 s sin avanzar aparece una pista.
 
@@ -147,7 +147,7 @@ Incorporamos los cinco ingredientes sorpresa durante la jornada del lunes 23 de 
 | Ingrediente | Dónde está |
 | --- | --- |
 | **Completo italiano** | La señora te lo regala en la hora punta («la palta y el tomate son de la feria»). |
-| **Guiño a 31 Minutos** | En Los cinco hay un calcetín con rombos en un asiento; con E habla como títere y defiende el derecho de los pasajeros a llegar a su casa. |
+| **Guiño a 31 Minutos** | En hora punta, el Escolar te regala su calcetín con rombos como agradecimiento («¡Calcetín con rombos maaan!»). Hecho con geometría propia, sin arte oficial. |
 | **«Queda una pura»** | El escolar, que viene contando las estaciones, grita «¡Queda una pura estación pa' Casa!» justo antes del apagón. |
 | **El número 23** | El metro es la Línea 23: está en el menú, en la lista de misiones y en el letrero de la estación Casa. |
 | **Logo de Codex** | En el menú («HECHO CON CODEX») y en Créditos. |

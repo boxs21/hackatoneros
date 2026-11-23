@@ -16,6 +16,7 @@ import { createMultitud } from '../mechanics/multitud.js';
 import { REGALOS, dar, mostrarRegalos, tiene } from '../mechanics/regalos.js';
 import { createPasajeros, updatePasajeros } from '../world/pasajeros.js';
 import { setupVagon, walkVagon } from '../world/vagonEscena.js';
+import { createCelular3d } from '../ui/celular3d.js';
 
 // Textos provisorios (Renato los puede cambiar). Duración automática según largo.
 const INTRO = [
@@ -108,6 +109,11 @@ export default {
       p.z = lugares[i].z;
       p.root.position.set(p.x, 0, p.z);
     });
+    // el Oficinista viene hablando por teléfono con su jefe (brazo a la oreja)
+    const oficinista = passengers.find((p) => p.name === 'Oficinista');
+    if (oficinista) oficinista.pose.telefono = 1;
+    // su celular en tu mano, en 3D (ui/celular3d.js): Codex, marcar a tu mamá, sin señal
+    const tel = createCelular3d(ctx.stage);
     const crowd = createMultitud({
       colliders: scene.colliders,
       avoid: [
@@ -120,7 +126,7 @@ export default {
     ctx.stage.add(...crowd.meshes);
 
     S = {
-      scene, passengers, crowd, t: 0,
+      scene, passengers, crowd, tel, t: 0,
       queue: [], lineEnd: 0, speaker: null,
       beat: 0, // índice del pasajero que toca conocer (4 = final)
       talking: false,
@@ -197,6 +203,7 @@ export default {
       }
       crowd.update(dt, cam.position);
       scene.light(0, dt, flash);
+      S.tel.update(cam, dt);
       return;
     }
 
@@ -301,6 +308,9 @@ export default {
 
     // sacudones del tren para que se sienta en movimiento
     if (Math.floor(S.t / 11) !== Math.floor((S.t - dt) / 11)) scene.lurch = .5;
+
+    // el celular del Oficinista sigue a la cámara (al final, cuando ya se movió)
+    S.tel.update(cam, dt);
   },
   exit(ctx) {
     S?.scene.dispose();
@@ -371,18 +381,32 @@ function entregar(ctx, pasajero) {
   S.queue.push({
     text: r.linea,
     speaker: pasajero,
-    onStart: () => { pasajero.armR.rotation.x = -1.25; },
+    onStart: () => {
+      pasajero.armR.rotation.x = -1.25;
+      // el Oficinista estira el brazo y te pasa su celular (pasajeros.js: pose del brazo)
+      if (pasajero.pose && pasajero.name === 'Oficinista') { pasajero.pose.telefono = 0; pasajero.pose.dar = 1; }
+    },
   });
   S.queue.push({
     text: '',
     ms: 2200,
     onStart: () => {
       pasajero.armR.rotation.x = 0;
+      if (pasajero.pose && pasajero.name === 'Oficinista') { pasajero.pose.dar = 0; pasajero.pose.conCelular = false; }
       dar(ctx, pasajero.name);
       ctx.hud.obtenido(r.nombre, r.uso);
     },
-    onEnd: () => nextBeat(ctx),
+    onEnd: pasajero.name === 'Oficinista' ? null : () => nextBeat(ctx),
   });
+  // Ingrediente: el logo de Codex. Lo estaba usando: lo levantas y ahí está abierto.
+  if (pasajero.name === 'Oficinista') {
+    S.queue.push({
+      text: 'OFICINISTA: Ah, justo estaba ocupando Codex… Ciérrelo no más y llame.',
+      speaker: pasajero,
+      onStart: () => S.tel.subir(),
+      onEnd: () => nextBeat(ctx),
+    });
+  }
 }
 
 function nextBeat(ctx) {
@@ -413,7 +437,8 @@ function nextBeat(ctx) {
     text,
     speaker: i === 1 ? S.passengers.find((p) => p.name === 'Escolar') : null,
     // 0: la llamada a tu mamá (suena una vez). 2: el altavoz que se corta.
-    onStart: i === 0 ? () => ctx.audio.sfx('celular') : i === 2 ? () => {
+    onStart: i === 0 ? () => { ctx.audio.sfx('celular'); S.tel.marcar(); } : i === 2 ? () => {
+      S.tel.cortar(); // la llamada se corta con el altavoz
       // La campanilla la pone el motor de audio al mostrar el subtítulo del altavoz.
       // seguridad (DISENO.md): solo 2 bajones lentos, bien separados (< 3 destellos por segundo),
       // y caben antes del frenazo.

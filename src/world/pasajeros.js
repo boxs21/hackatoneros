@@ -35,11 +35,104 @@ export function createPasajeros(stage) {
     fig.root.add(objeto);
     fig.root.position.set(p.x, 0, p.z);
     stage.add(fig.root);
-    return { ...p, ...fig, objeto, mixer: md?.mixer ?? null, gone: false, sway: Math.random() * 6 };
+    // Pose del brazo izquierdo (Renato): hablar por teléfono y pasarte el celular.
+    // pose.telefono / pose.dar = 0..1 (objetivo); el estado los pone y aquí se suavizan.
+    const huesos = md ? buscarHuesos(md.obj) : null;
+    const celu = new THREE.Mesh(CELU_GEO, CELU_MAT);
+    celu.visible = false;
+    fig.root.add(celu);
+    const pose = { telefono: 0, dar: 0, t: 0, d: 0, conCelular: true };
+    return { ...p, ...fig, objeto, mixer: md?.mixer ?? null, gone: false, sway: Math.random() * 6, huesos, celu, pose };
   });
 }
 
 const tmp = new THREE.Vector3();
+
+// --- Pose del brazo (Renato) ---------------------------------------------------
+// Celular en la mano del Oficinista (izquierda, como dice DISENO.md).
+const CELU_GEO = new THREE.BoxGeometry(.045, .09, .012);
+const CELU_MAT = new THREE.MeshBasicMaterial({ color: 0x9fc4ff });
+
+function buscarHuesos(obj) {
+  const h = {};
+  obj.traverse((o) => {
+    if (!o.isBone) return;
+    const n = o.name.replace('.', ''); // GLTFLoader les saca el punto: UpperArm.L -> UpperArmL
+    if (n === 'UpperArmL') h.brazo = o;
+    else if (n === 'LowerArmL') h.antebrazo = o;
+    else if (n === 'PalmL') h.mano = o;
+    else if (n === 'Head') h.cabeza = o;
+    else if (n === 'Neck') h.cuello = o;
+  });
+  return h.brazo && h.antebrazo && h.mano && h.cabeza && h.cuello ? h : null;
+}
+
+const va = new THREE.Vector3();
+const vb = new THREE.Vector3();
+const vc = new THREE.Vector3();
+const vd = new THREE.Vector3();
+const lado = new THREE.Vector3();
+const frente = new THREE.Vector3();
+const codo = new THREE.Vector3();
+const manoObj = new THREE.Vector3();
+const qd = new THREE.Quaternion();
+const qw = new THREE.Quaternion();
+const qp = new THREE.Quaternion();
+const QI = new THREE.Quaternion();
+const qt = new THREE.Quaternion();
+
+// Gira un hueso (en el mundo) para que apunte de su base hacia `objetivo`.
+function apuntar(hueso, hijo, objetivo, peso) {
+  hueso.updateWorldMatrix(true, true);
+  hueso.getWorldPosition(va);
+  hijo.getWorldPosition(vb);
+  vc.subVectors(vb, va).normalize();
+  vd.subVectors(objetivo, va).normalize();
+  qd.setFromUnitVectors(vc, vd);
+  if (peso < 1) qd.copy(qt.copy(QI).slerp(qd, peso)); // (slerpQuaternions pisaría qd)
+  hueso.getWorldQuaternion(qw).premultiply(qd);
+  hueso.parent.getWorldQuaternion(qp).invert();
+  hueso.quaternion.copy(qp.multiply(qw));
+}
+
+function posarBrazo(p, dt, camera) {
+  const ps = p.pose;
+  ps.t += (ps.telefono - ps.t) * Math.min(1, dt * 5);
+  ps.d += (ps.dar - ps.d) * Math.min(1, dt * 5);
+  const peso = Math.min(1, Math.max(ps.t, ps.d));
+  p.celu.visible = ps.conCelular && peso > .5;
+  if (peso < .01) return;
+  const h = p.huesos;
+  if (!h) {
+    // figura de cubos (sin modelo): solo levanta el brazo
+    p.armL.rotation.x = -(2.6 * ps.t * (1 - ps.d) + 1.35 * ps.d);
+    return;
+  }
+  h.cuello.getWorldPosition(va);
+  h.brazo.getWorldPosition(vb);
+  lado.subVectors(vb, va).setY(0).normalize(); // hacia su izquierda
+  frente.set(0, 0, 1).applyQuaternion(p.root.quaternion);
+  h.cabeza.getWorldPosition(vc);
+  // al teléfono: codo abajo y afuera, mano en la oreja
+  codo.copy(vb).addScaledVector(lado, .12).addScaledVector(frente, .1).y -= .2;
+  manoObj.copy(vc).addScaledVector(lado, .1).addScaledVector(frente, .03);
+  // pasándote el celular: el brazo estirado hacia tu pecho
+  if (ps.d > .01) {
+    vd.copy(camera.position).y -= .35;
+    vd.sub(vb).normalize();
+    va.copy(vb).addScaledVector(vd, .26);
+    codo.lerp(va, ps.d);
+    va.copy(vb).addScaledVector(vd, .6);
+    manoObj.lerp(va, ps.d);
+  }
+  apuntar(h.brazo, h.antebrazo, codo, peso);
+  apuntar(h.antebrazo, h.mano, manoObj, peso);
+  if (p.celu.visible) {
+    h.mano.getWorldPosition(va);
+    p.root.worldToLocal(p.celu.position.copy(va));
+    p.celu.lookAt(ps.d > .5 ? camera.position : vc);
+  }
+}
 
 // Miran al jugador y respiran. Los que ya no están, no.
 export function updatePasajeros(list, dt, camera) {
@@ -54,6 +147,7 @@ export function updatePasajeros(list, dt, camera) {
     p.body.position.y = Math.sin(p.sway * 1.7) * .006;
     p.armL.rotation.x = Math.sin(p.sway * .9) * .05;
     p.head.rotation.x = Math.sin(p.sway * .6) * .04;
+    if (p.pose) posarBrazo(p, dt, camera);
   }
 }
 

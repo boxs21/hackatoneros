@@ -92,6 +92,27 @@ const SPRITES = {
       '................',
     ],
   },
+  calcetin: {
+    pal: { r: '#c8322b', R: '#9a221d', y: '#f2c230', b: '#2f6fd6', w: '#f6f0dc', k: '#0b0b0b' },
+    px: [
+      '................',
+      '.....rrrrrr.....',
+      '....rwkrrwkr....',
+      '....rrrrrrrr....',
+      '....ryrrbrry....',
+      '.....rrrrrr.....',
+      '.....ryrrbr.....',
+      '.....rrrrrr.....',
+      '.....rbrryr.....',
+      '.....rrrrrr.....',
+      '.....ryrrbr.....',
+      '.....RRRRRR.....',
+      '.....wwwwww.....',
+      '.....wwwwww.....',
+      '................',
+      '................',
+    ],
+  },
   otro: {
     pal: { y: '#f2b705', Y: '#b98a00', k: '#0b0f14' },
     px: [
@@ -120,6 +141,7 @@ function spriteFor(nombre) {
   if (n.includes('completo')) return SPRITES.completo;
   if (n.includes('celular')) return SPRITES.celular;
   if (n.includes('llavero')) return SPRITES.llavero;
+  if (n.includes('calcet')) return SPRITES.calcetin;
   if (n.includes('chocolate')) return SPRITES.chocolate;
   return SPRITES.otro;
 }

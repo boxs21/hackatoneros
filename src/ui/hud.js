@@ -9,7 +9,6 @@ import { murmullo } from './voces.js';
 import { createCamara } from './camara.js';
 import { createSinBateria } from './sinBateria.js';
 import { createObtenido } from './obtenido.js';
-import { createLlamada } from './llamada.js';
 
 export function createHud(root, { audio } = {}) {
   const title = el('div', 'hud-title');
@@ -22,8 +21,6 @@ export function createHud(root, { audio } = {}) {
   const camara = createCamara(root);
   // Tu celular sin batería (hora punta): se anima solo cuando el subtítulo lo dice.
   const sinBateria = createSinBateria(root, { audio });
-  // El celular del Oficinista y la llamada a tu mamá (hora punta), también por subtítulo.
-  const llamada = createLlamada(root, { audio });
 
   let subTimer = 0;
   let voz = null;
@@ -42,9 +39,6 @@ export function createHud(root, { audio } = {}) {
     subtitle(text, ms = 3000) {
       sub.textContent = text;
       if (/sin bater[ií]a/i.test(text)) sinBateria.play();
-      else if (/tiene c[aá]mara y flash/i.test(text)) llamada.recibir();
-      else if (/marcas el n[uú]mero/i.test(text)) llamada.marcar();
-      else if (/^ALTAVOZ: Pr[oó]xima estaci[oó]n/i.test(text)) llamada.cortar();
       sub.classList.add('on');
       clearTimeout(subTimer);
       subTimer = setTimeout(() => sub.classList.remove('on'), ms);
@@ -104,7 +98,6 @@ export function createHud(root, { audio } = {}) {
       sub.classList.remove('on');
       camara.clear();
       sinBateria.stop();
-      llamada.stop();
       cerrarEleccion?.(0);
       callarVoz();
     },
