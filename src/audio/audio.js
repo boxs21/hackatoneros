@@ -49,7 +49,16 @@ function avisar(tipo, nombre) {
   console.warn(`[audio] no existe ${tipo} "${nombre}"`);
 }
 
+// Ejecuta fn en el primer click, toque o tecla (lo que el navegador acepta como gesto).
+function alPrimerGesto(fn) {
+  const una = () => { removeEventListener('pointerdown', una, true); removeEventListener('keydown', una, true); fn(); };
+  addEventListener('pointerdown', una, true);
+  addEventListener('keydown', una, true);
+}
+
 function armar() {
+  // Si el contexto nace bloqueado, se despierta solo con el primer gesto.
+  if (ac.state === 'suspended') alPrimerGesto(() => { ac.resume().catch((err) => console.error('[audio] resume', err)); });
   master = ac.createGain();
   master.gain.value = MEZCLA.master;
   master.connect(ac.destination);
@@ -197,7 +206,14 @@ function cambiarBucle(grupo, nombre, opts, actual) {
     const el = new Audio(DIRECTO.get(nombre));
     el.loop = opts.loop ?? true;
     ac.createMediaElementSource(el).connect(g);
-    el.play().catch((err) => console.error(`[audio] no se pudo reproducir ${nombre}`, err));
+    // Intenta sonar de inmediato. Si el navegador lo bloquea (aún no hubo gesto
+    // del jugador), suena en el primer click o tecla, sin esperar nada más.
+    el.play().catch((err) => {
+      if (err?.name !== 'NotAllowedError') { console.error(`[audio] no se pudo reproducir ${nombre}`, err); return; }
+      alPrimerGesto(() => { if (!el.dataset.fin) el.play().catch((e) => console.error(`[audio] no se pudo reproducir ${nombre}`, e)); });
+    });
+    const pausar = el.pause.bind(el);
+    el.pause = () => { el.dataset.fin = '1'; pausar(); };
     parar = (cuando) => setTimeout(() => el.pause(), Math.max(0, cuando - ac.currentTime) * 1000 + 30);
   } else if (buf) {
     const s = tocarBuffer(buf, g, { loop: opts.loop ?? true });

@@ -5,8 +5,9 @@
 //   const menu = abrirMenu(ctx, { alComenzar });   // en enter() del estado inicio
 //   menu.cerrar();                                 // en exit()
 //
-// Antes del primer gesto del jugador el navegador no deja sonar nada: por eso
-// primero hay un umbral ("presiona cualquier tecla") y después aparece el menú.
+// La música intenta partir sola. La mayoría de los navegadores la bloquea hasta
+// el primer gesto del jugador: en ese caso se ve un umbral ("presiona cualquier
+// tecla") y la música entra en ese mismo instante.
 import './menu.css';
 
 const OPCIONES = [
@@ -228,9 +229,6 @@ export function abrirMenu(ctx, { alComenzar }) {
     raiz.dataset.fase = 'menu';
     brillo = 0.35;
     marcar(0, false);
-    // El audio se desbloquea con este gesto; la música entra apenas pueda.
-    ctx.audio.unlock().then(() => { if (vivo && raiz.dataset.fase === 'menu') ctx.audio.musica('menu', { volume: 0.9, fade: 2.5 }); })
-      .catch((err) => console.error('[menu] audio', err));
   }
 
   function elegir(id) {
@@ -271,6 +269,13 @@ export function abrirMenu(ctx, { alComenzar }) {
   nav.addEventListener('pointerover', encima);
   const alCambiar = () => medir();
   addEventListener('resize', alCambiar);
+
+  // La música parte de inmediato. Si el navegador la bloquea hasta el primer
+  // gesto, el motor la lanza apenas llegue ese click o tecla.
+  ctx.audio.unlock().catch((err) => console.error('[menu] audio', err));
+  ctx.audio.musica('menu', { volume: 0.9, fade: 1.2 });
+  // Si el navegador dejó sonar sin gesto, no hace falta el umbral.
+  setTimeout(() => { if (vivo && ctx.audio.context?.state === 'running') entrar(); }, 350);
 
   medir();
   // Cuando llega la tipografía, el 23 se vuelve a pintar con su letra de verdad.
