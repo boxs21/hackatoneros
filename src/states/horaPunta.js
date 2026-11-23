@@ -20,8 +20,13 @@ import { setupVagon, walkVagon } from '../world/vagonEscena.js';
 // Textos provisorios (Renato los puede cambiar). Duración automática según largo.
 const INTRO = [
   '18:04. Sales de la pega. Solo quieres llegar a Casa.',
+  'Sacas el celular para avisarle a tu mamá… Oh. Sin batería.',
+  'Y en hora punta.',
   '[W] Abrirte paso · [Mouse] Mirar',
 ];
+// Orden en que los conoces. El Oficinista va al último: le pides su celular para
+// llamar a tu mamá y, justo después, viene la catástrofe.
+const ORDEN_CHARLA = ['Escolar', 'Señora', 'Vendedor', 'Oficinista'];
 const DIALOGOS = {
   // Recortado para que la intro dure ~80 s: lo que se queda adelanta lo que viene.
   Escolar: [
@@ -46,8 +51,8 @@ const RESPUESTAS = {
     ['No sé, pregúntale a otro.', 'ESCOLAR: Ah… ya. Sigo contando solo no más.'],
   ],
   Oficinista: [
-    ['¿Todo bien?', 'OFICINISTA: Sí, sí… es que si mañana no llego a la hora, me echan.'],
-    ['(No decir nada)', 'OFICINISTA: …Perdón. Hablo muy fuerte, ¿cierto?'],
+    ['Disculpe, ¿me presta el celular? Tengo que llamar a mi mamá.', 'OFICINISTA: Ya… pero rapidito, que ando con poca señal.'],
+    ['¿Todo bien? …¿Y me presta el celular? Es pa’ llamar a mi mamá.', 'OFICINISTA: Si mañana no llego a la hora, me echan… Tome, llame no más.'],
   ],
   Señora: [
     ['Yo le ayudo con el carro.', 'SEÑORA: Ay, gracias, mijo. Ya no queda gente así.'],
@@ -61,21 +66,22 @@ const RESPUESTAS = {
 // Ingrediente obligatorio: «Queda una pura». El Escolar venía contando las estaciones.
 // El altavoz no alcanza a terminar: a media frase se corta la voz y se va la luz.
 const FINAL = [
+  'Marcas el número de tu mamá. Suena una vez…',
   'ESCOLAR: ¡Queda una pura estación pa’ Casa!',
-  'ALTAVOZ: Próxima estación… Ca… sa… —',
+  'ALTAVOZ: Próxima estación… Baque—',
 ];
 // Misión en pantalla (lista de Valentín, src/ui/misiones.js): a quién ir ahora.
 const MISION = {
   Escolar: 'Acércate al escolar del gorro azul',
-  Oficinista: 'Acércate al oficinista que habla por teléfono',
+  Oficinista: 'Pídele el celular al oficinista para llamar a tu mamá',
   Señora: 'Acércate a la señora del carro de feria',
   Vendedor: 'Acércate al vendedor de chocolates',
 };
 // Apertura de cine: puertas que se cierran y la cámara gira hacia el pasillo.
 const CINE = 3.8; // s sin control al empezar
 // Segundos desde que empieza a sonar el altavoz hasta el frenazo. El corte seco
-// llega 1,85 s después (final de hora punta + apagón), justo sobre el "Ca—".
-const FRENAZO_TRAS_ALTAVOZ = 1.5;
+// llega 1,85 s después (final de hora punta + apagón): la voz alcanza a decir "Baque—".
+const FRENAZO_TRAS_ALTAVOZ = 1.4;
 const RECLAMOS = ['¡Permiso!', '¡Oiga, no empuje!', 'Uf…', 'Córrase pa’ dentro…', '¡Ya po!', 'Con permiso, con permiso…'];
 const MURMULLOS = ['…y llegué tarde otra vez…', '¿Alguien tiene hora?', '…mañana también, sí…', '…este tren va más lento que nunca…'];
 
@@ -94,7 +100,15 @@ export default {
   autoAdvance: true,
   enter(ctx) {
     const scene = setupVagon(ctx, { z: 12.2, ambient: 1.1, lit: true });
-    const passengers = createPasajeros(ctx.stage);
+    // Los mismos cuatro, pero en el orden de la charla: el primero más cerca, el Oficinista al fondo.
+    const creados = createPasajeros(ctx.stage);
+    const lugares = creados.map((p) => ({ x: p.x, z: p.z })).sort((a, b) => b.z - a.z);
+    const passengers = ORDEN_CHARLA.map((n) => creados.find((p) => p.name === n)).filter(Boolean);
+    passengers.forEach((p, i) => {
+      p.x = lugares[i].x;
+      p.z = lugares[i].z;
+      p.root.position.set(p.x, 0, p.z);
+    });
     const crowd = createMultitud({
       colliders: scene.colliders,
       avoid: [
@@ -114,6 +128,21 @@ export default {
       lastComplain: -9, lastMurmur: 4, endAt: 0, ended: false, jolt: 0, flickerAt: [],
     };
     if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
+    // "!" ámbar sobre el pasajero al que hay que ir (se ve con los modelos 3D)
+    const c = document.createElement('canvas');
+    c.width = 8;
+    c.height = 16;
+    const g = c.getContext('2d');
+    g.fillStyle = '#ffb800';
+    g.fillRect(3, 1, 2, 9);
+    g.fillRect(3, 12, 2, 2);
+    const tex = new THREE.CanvasTexture(c);
+    tex.magFilter = tex.minFilter = THREE.NearestFilter;
+    S.marca = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, fog: false }));
+    S.marca.scale.set(.2, .4, 1);
+    S.marca.renderOrder = 990;
+    S.marca.visible = false;
+    ctx.stage.add(S.marca);
     S.flash = createFlash({
       onFire() {
         ctx.audio.sfx('flash', { multitud: false });
@@ -130,7 +159,10 @@ export default {
     S.titleUntil = 4.4;
     // Partes sin nada: el celular (y lo demás) te lo van pasando los cuatro.
     mostrarRegalos(ctx, { reiniciar: true });
+    // Antes del apagón se ve NORMAL: sin celular en la mano, sin flash y sin bordes
+    // de cámara. La cámara del celular recién aparece después del apagón (Los cinco).
     scene.celular.group.visible = false;
+    scene.overlay.u.uVig.value = 0;
     INTRO.forEach((text) => S.queue.push({ text }));
     S.queue[0].delay = CINE + .3;
     ctx.audio.ambiente('vagon');
@@ -170,6 +202,7 @@ export default {
     }
 
     // ---- cola de diálogos: una línea a la vez, completa
+    if (ctx.input.pressed('Space') || ctx.input.pressed('Enter')) skipLine(ctx);
     runQueue(ctx);
 
     // ---- moverse (lento; más lento empujando). No se puede pasar al que habla.
@@ -209,6 +242,8 @@ export default {
       current.armR.rotation.x += (target - current.armR.rotation.x) * Math.min(1, dt * 8);
     }
     for (const p of passengers) if (p !== current || S.talking) p.armR.rotation.x *= Math.max(0, 1 - dt * 6);
+    S.marca.visible = Boolean(current && !S.talking && S.t > CINE && !S.cinematic);
+    if (S.marca.visible) S.marca.position.set(current.x, 2.08 + Math.sin(S.t * 4) * .04, current.z);
     // mirar suave hacia quien habla (si el jugador no está moviendo el mouse)
     if (S.speaker && !S.cinematic && Math.abs(ctx.input.mouse.dx) < 1) {
       const dx = S.speaker.x - cam.position.x;
@@ -226,8 +261,7 @@ export default {
       cam.rotation.y += diff * Math.min(1, dt * .9);
     }
 
-    if (ctx.input.pressed('KeyF') && tiene(ctx, 'celular')) flash.fire(now);
-    scene.light(flash.level(now), dt, flash);
+    scene.light(flash.level(now), dt, flash); // sin flash en hora punta: se ve normal
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .6;
 
     // ---- conocer al pasajero que toca (en orden, por cercanía)
@@ -279,6 +313,15 @@ export default {
 function say(ctx, text, ms = lineMs(text)) {
   if (text) ctx.hud.subtitle(text, ms); // texto vacío = silencio (pausa dramática)
   S.lineEnd = S.t + ms / 1000;
+  S.curText = text;
+}
+
+// Saltar diálogo: Espacio o Enter pasan a la siguiente línea. No se saltan las
+// pausas en silencio, "todos te miran" ni el final (S.cinematic): son el susto.
+function skipLine(ctx) {
+  if (S.t < CINE || S.cinematic || !S.curText || S.t >= S.lineEnd) return;
+  S.lineEnd = S.t - .25; // la cola sigue en este mismo cuadro
+  if (!S.queue.length) ctx.hud.subtitle('', 1); // si no viene nada, cierra el subtítulo (y su voz)
 }
 
 function runQueue(ctx) {
@@ -296,6 +339,10 @@ function runQueue(ctx) {
   if (line.delay && S.t < line.delay) return;
   S.queue.shift();
   say(ctx, line.text, line.ms);
+  if (line.speaker && !S.skipTold) {
+    S.skipTold = true;
+    ctx.hud.hint('[Espacio] saltar diálogo', 4500);
+  }
   S.speaker = line.speaker || null;
   line.onStart?.();
   if (line.onEnd) S.pendingEnd = line.onEnd;
@@ -328,12 +375,12 @@ function entregar(ctx, pasajero) {
     onStart: () => { pasajero.armR.rotation.x = -1.25; },
   });
   S.queue.push({
-    text: `Recibiste: ${r.nombre.toLowerCase()} ${r.de} · ${r.uso}`,
-    ms: 2400,
+    text: '',
+    ms: 2200,
     onStart: () => {
       pasajero.armR.rotation.x = 0;
       dar(ctx, pasajero.name);
-      if (r.id === 'celular') S.scene.celular.group.visible = true;
+      ctx.hud.obtenido(r.nombre, r.uso);
     },
     onEnd: () => nextBeat(ctx),
   });
@@ -365,9 +412,9 @@ function nextBeat(ctx) {
   // altavoz, parpadeo, alguien pregunta… y frenazo
   FINAL.forEach((text, i) => S.queue.push({
     text,
-    speaker: i === 0 ? S.passengers.find((p) => p.name === 'Escolar') : null,
-    // La campanilla y la voz del altavoz las pone el motor de audio al mostrar el subtítulo.
-    onStart: i === 1 ? () => {
+    speaker: i === 1 ? S.passengers.find((p) => p.name === 'Escolar') : null,
+    // 0: la llamada a tu mamá (suena una vez). 2: el altavoz que se corta.
+    onStart: i === 0 ? () => ctx.audio.sfx('celular') : i === 2 ? () => {
       // La campanilla la pone el motor de audio al mostrar el subtítulo del altavoz.
       // seguridad (DISENO.md): solo 2 bajones lentos, bien separados (< 3 destellos por segundo),
       // y caben antes del frenazo.

@@ -391,6 +391,7 @@ export function createMundo() {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), negro);
     m.position.set(x, y, z);
     group.add(m);
+    return m;
   };
   for (const s of [-1, 1]) {
     tapa(.1, 1.2, 26.6, s * 2.63, 3.04, 0); // sobre las ventanas, hasta el techo
@@ -398,8 +399,24 @@ export function createMundo() {
     tapa(5.5, 3.9, .1, 0, 1.7, s * 13.14); // extremos
   }
   tapa(5.5, .1, 26.6, 0, 3.4, 0); // techo
-  tapa(5.5, .1, 26.6, 0, -.2, 0); // bajo el piso
+  const tapaPiso = tapa(5.5, .1, 26.6, 0, -.2, 0); // bajo el piso
+  // Vagón roto (Oficinista): no tiene piso y "el flash te muestra dónde pisar". Si
+  // abajo se viera el mar, las plataformas quedarían en silueta y se sabría dónde
+  // pisar sin flash. Por eso ahí va un foso negro: el mundo se ve solo por las ventanas.
+  const foso = new THREE.Group();
+  const pared = (w, h, d, x, y, z) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), negro);
+    m.position.set(x, y, z);
+    foso.add(m);
+  };
+  for (const s of [-1, 1]) {
+    pared(.1, 14, 26.6, s * 2.63, -7, 0);
+    pared(5.5, 14, .1, 0, -7, s * 13.14);
+  }
+  pared(5.5, .1, 26.6, 0, -14, 0);
+  foso.visible = false;
+  group.add(foso);
 
   group.add(domo, torres, colosos, via, hojas);
-  return { group, u, hojaU };
+  return { group, u, hojaU, tapaPiso, foso };
 }

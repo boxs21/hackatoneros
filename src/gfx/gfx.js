@@ -164,6 +164,7 @@ export function createGfx(ctx) {
   let primeraVez = true; // la primera vez que se corta la luz, el cielo se abre lento
   let flashReciente = 0;
   let exteriorAhora = false;
+  let hayPiso = false; // el vagón roto (Oficinista) no trae piso
 
   // ---------- qué hay en escena ----------
   const refGeo = borradoGeometry();
@@ -242,6 +243,7 @@ export function createGfx(ctx) {
     if (!m) return;
     // el túnel de afuera (paredes, cables, piso): a oscuras se saca
     const gp = o.geometry?.parameters;
+    if (gp && gp.width === 5 && gp.height === .15 && gp.depth === 26) hayPiso = true;
     if (gp && gp.depth && ((gp.width === .2 && gp.height === 6) || (gp.width === 9 && gp.depth === 30) || (gp.width === .08 && gp.depth === 2.6))) {
       tunel.push(o);
       return;
@@ -288,6 +290,7 @@ export function createGfx(ctx) {
       vistos = new WeakSet();
       cuerpos = new Map();
       flashSpot = null;
+      hayPiso = false;
       tunel = [];
       borrados = null;
       overlayU = null;
@@ -488,6 +491,8 @@ export function createGfx(ctx) {
       if (encendido) primeraVez = true;
     }
     mundo.group.visible = abre > .001;
+    mundo.tapaPiso.visible = hayPiso;
+    mundo.foso.visible = !hayPiso;
     if (mundo.group.visible) {
       const c = (PALETAS[ctx.fsm.current] || PALETAS.base).cielo || PALETAS.base.cielo;
       const kc = Math.min(1, dt * 2);

@@ -4,6 +4,7 @@
 //   ctx.hud.subtitle(texto, ms)       subtítulo abajo; suena solo con murmullo (ui/voces.js)
 //   ctx.hud.hint(texto, ms)           pista del celular (la dispara core/help.js)
 //   await ctx.hud.elegir(['Sí', 'No'], { ms })  -> índice elegido (teclas 1–3)
+//   ctx.hud.obtenido('Celular', '[F] flash')  aviso «CELULAR OBTENIDO» arriba al centro
 import { murmullo } from './voces.js';
 
 export function createHud(root, { audio } = {}) {
@@ -11,7 +12,9 @@ export function createHud(root, { audio } = {}) {
   const sub = el('div', 'hud-sub');
   const hint = el('div', 'hud-hint');
   const choice = el('div', 'hud-choice');
-  root.append(title, sub, hint, choice);
+  const item = el('div', 'hud-obtenido');
+  root.append(title, sub, hint, choice, item);
+  let itemTimer = 0;
 
   let subTimer = 0;
   let hintTimer = 0;
@@ -81,7 +84,17 @@ export function createHud(root, { audio } = {}) {
         choice.addEventListener('click', onClick);
       });
     },
+    // Aviso de objeto recibido: «CELULAR OBTENIDO» y, abajo, para qué sirve.
+    obtenido(nombre, uso = '', ms = 2600) {
+      item.innerHTML = `<b>${esc(nombre)} obtenido</b>${uso ? `<small>${esc(uso)}</small>` : ''}`;
+      item.classList.remove('on');
+      void item.offsetWidth; // reinicia la animación
+      item.classList.add('on');
+      clearTimeout(itemTimer);
+      itemTimer = setTimeout(() => item.classList.remove('on'), ms);
+    },
     clear() {
+      item.classList.remove('on');
       title.innerHTML = '';
       sub.classList.remove('on');
       hint.classList.remove('on');

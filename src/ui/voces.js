@@ -2,10 +2,11 @@
 // con sílabas sin palabras, con el tono de quien habla. Lo genera el motor de Andy
 // (habla() en src/audio/synth.js), así que no hay archivos de voz.
 //   "ESCOLAR: Hola…"  -> tono del escolar     sin prefijo -> narrador (más bajo y suave)
-const QUIEN = { ESCOLAR: 'escolar', OFICINISTA: 'oficinista', 'SEÑORA': 'senora', VENDEDOR: 'vendedor', ALTAVOZ: 'altavoz' };
+const QUIEN = { ESCOLAR: 'escolar', OFICINISTA: 'oficinista', 'SEÑORA': 'senora', VENDEDOR: 'vendedor', ALTAVOZ: 'altavoz', 'CALCETÍN': 'calcetin' };
 const EXTRA = {
   narrador: { tono: 135, volume: 0.45 },
   altavoz: { tono: 105, volume: 0.8, radio: true },
+  calcetin: { tono: 340, volume: 0.7 }, // voz de títere
 };
 
 export function murmullo(texto) {

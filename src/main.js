@@ -78,6 +78,58 @@ events.on('state:enter', () => {
 events.on('hint', (text) => ctx.hud.hint(text));
 
 const gfx = createGfx(ctx);
+// Esc en medio del juego vuelve al menú (ahí está ESCENAS para saltar a cualquier momento).
+// Pausa: si el jugador cambia de pestaña o de ventana, todo se detiene (también el
+// sonido) hasta que haga click. Nada de esto aplica en el menú.
+const SIN_PAUSA = new Set(['inicio']);
+const pausa = document.createElement('div');
+pausa.id = 'pausa';
+pausa.innerHTML = '<b>PAUSA</b><span>Haz click para seguir · Esc: menú</span>';
+pausa.style.cssText = 'position:absolute;inset:0;z-index:30;display:none;place-content:center;gap:10px;'
+  + 'text-align:center;background:rgba(0,0,0,.72);color:#ffb800;cursor:pointer;'
+  + 'font:600 clamp(18px,3vw,34px)/1.2 ui-monospace,Menlo,monospace;letter-spacing:.12em;';
+pausa.querySelector('span').style.cssText = 'font-size:.45em;color:#eef1f6;letter-spacing:.06em;';
+document.getElementById('screen').appendChild(pausa);
+let jugando = false; // ya capturó el mouse al menos una vez
+function setPaused(v) {
+  if (ctx.paused === v) return;
+  ctx.paused = v;
+  pausa.style.display = v ? 'grid' : 'none'; // (no usar hidden: el display del estilo le gana)
+  const ac = ctx.audio.context;
+  if (ac) (v ? ac.suspend() : ac.resume()).catch((err) => console.error('[pausa] audio', err));
+}
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement === canvas) { jugando = true; setPaused(false); return; }
+  if (!jugando || SIN_PAUSA.has(ctx.fsm.current)) return;
+  // El navegador se queda con la tecla Esc cuando el mouse está capturado: lo que se ve
+  // es que se suelta el mouse con la ventana todavía al frente.
+  if (document.hidden || !document.hasFocus()) setPaused(true);
+  else irAlMenu();
+});
+let yendoAlMenu = false;
+function irAlMenu() {
+  if (yendoAlMenu || SIN_PAUSA.has(ctx.fsm.current)) return;
+  yendoAlMenu = true;
+  setPaused(false);
+  ctx.audio.stopAll(0.2);
+  ctx.go('inicio');
+}
+// Con el mouse suelto (en pausa, o si el navegador no lo capturó), Esc sí llega como tecla.
+addEventListener('keydown', (e) => {
+  if (e.code === 'Escape') irAlMenu();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && jugando && !SIN_PAUSA.has(ctx.fsm.current)) setPaused(true);
+});
+pausa.addEventListener('click', () => {
+  ctx.input.lockPointer();
+  setPaused(false); // si el navegador no devuelve el mouse, igual se sigue jugando (flechas)
+});
+events.on('state:enter', (id) => {
+  yendoAlMenu = false;
+  if (SIN_PAUSA.has(id)) setPaused(false);
+});
+
 const help = createHelp(ctx);
 const demo = setupDemo(ctx);
 if (DEMO) window.ctx = ctx; // para depurar en la consola
@@ -86,8 +138,10 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  ctx.fsm.update(dt);
-  help.update(dt);
+  if (!ctx.paused) {
+    ctx.fsm.update(dt);
+    help.update(dt);
+  }
   demo.update(dt);
   gfx.render(dt); // en modo PS1 es renderer.render(scene, camera)
   ctx.input.endFrame();

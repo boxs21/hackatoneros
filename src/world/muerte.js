@@ -34,7 +34,7 @@ const ULTIMAS = [
 const DESPUES = [
   'La mochila quedó en el piso. Su llavero sigue en tu bolsillo.',
   'El celular que tienes en la mano era de él.',
-  'La estampita de la señora todavía está tibia.',
+  'El completo de la señora todavía está tibio.',
   'Quedaste solo. Cada flash los trajo. La puerta del fondo: la luz roja.',
 ];
 

@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { createBorrados, CATCH_RADIUS } from '../mechanics/borrados.js';
 import { createFlash } from '../mechanics/flash.js';
+import { crearBolsillo } from '../mechanics/bolsillo.js';
 import { basic, pixelTexture } from '../world/ps1.js';
 
 // Mensajes de un número desconocido (¿el escolar?). Textos provisorios para Renato.
@@ -129,6 +130,7 @@ export default {
       ray: new THREE.Raycaster(), center: new THREE.Vector2(0, 0), frustum: new THREE.Frustum(), m: new THREE.Matrix4(),
       intro: retry ? 99 : 0, lastLie: -99, msg: retry ? 3 : 0, msgAt: 9 };
     if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
+    S.bolsillo = crearBolsillo(ctx); // regalos de la hora punta
     drawKeypad(S);
 
     // Lo que se acerca con cada pulso del tubo: silueta negra con ojos blancos.
@@ -190,6 +192,7 @@ export default {
     }
 
     walkVagon(dt, ctx, { colliders: scene.colliders });
+    S.bolsillo.update(cam);
     if (!S.done && ctx.input.pressed('KeyF')) flash.fire(now);
     const level = ctx.demo && window.__fdsHold ? 1 : flash.level(now);
     const glow = flash.glow(now);
@@ -230,7 +233,9 @@ export default {
     const danger = THREE.MathUtils.clamp((1.35 - d) / .9, 0, 1); // viñeta roja: más cerca que el radar
     scene.overlay.u.uDanger.value += (danger - scene.overlay.u.uDanger.value) * Math.min(1, dt * 8);
     if (danger > .3 && Math.floor(S.t * 1.6) !== Math.floor((S.t - dt) * 1.6)) ctx.audio.sfx('latido', { volumen: danger });
-    if (d < CATCH_RADIUS) {
+    if (d < CATCH_RADIUS && S.bolsillo.salvar([crowd], cam, scene)) {
+      // el chocolate te salvó
+    } else if (d < CATCH_RADIUS) {
       S.caught = 0;
       ctx.audio.sfx('atrapado');
       scare.show(crowd.nearestPerson(cam.position), cam);
@@ -262,6 +267,8 @@ export default {
     if (hover !== pad.hover) { pad.hover = hover; drawKeypad(S); }
     const press = ctx.input.pressed('KeyE') || S.click;
     S.click = false;
+    // E lejos del teclado: tirar el completo (si lo tienes)
+    if (ctx.input.pressed('KeyE') && hover < 0 && !S.done) S.bolsillo.tirar([crowd], cam);
     if (press && hover >= 0 && !pad.state) {
       ctx.audio.sfx('ui');
       const k = KEYS[hover];

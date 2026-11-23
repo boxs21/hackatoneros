@@ -19,7 +19,7 @@ function pixelF(g, x, y, color) {
   g.fillRect(x, y + 2, 2, 1);
 }
 
-function drawScreen(g, { white, photo, ready, count, danger, lie, tick }) {
+function drawScreen(g, { white, photo, ready, hot, count, danger, lie, tick }) {
   if (white) {
     g.fillStyle = '#ffffff';
     g.fillRect(0, 0, W, H);
@@ -78,12 +78,17 @@ function drawScreen(g, { white, photo, ready, count, danger, lie, tick }) {
     g.fillStyle = '#e4322b';
     for (let i = 0; i < Math.ceil(danger * 4); i++) g.fillRect(12 + i * 2, 4 - Math.min(2, i), 1, 1 + Math.min(2, i));
   }
-  // botón de disparo con la F
-  g.fillStyle = ready ? '#ffffff' : '#4a4f58';
+  // botón de disparo con la F (rojo y con barras de calor si se recalentó)
+  g.fillStyle = hot ? '#e4322b' : ready ? '#ffffff' : '#4a4f58';
   g.fillRect(11, 50, 10, 10);
   g.fillStyle = '#0b0f14';
   g.fillRect(12, 51, 8, 8);
-  g.fillStyle = ready ? '#f2b705' : '#4a4f58';
+  g.fillStyle = hot ? '#7a1712' : ready ? '#f2b705' : '#4a4f58';
+  if (hot) {
+    g.fillStyle = '#e4322b';
+    for (let i = 0; i < 3; i++) g.fillRect(6 + i * 9, 46, 3, 2);
+    g.fillStyle = '#7a1712';
+  }
   g.fillRect(13, 52, 6, 6);
   pixelF(g, 15, 53, '#0b0f14');
 }
@@ -128,7 +133,7 @@ export function createCelular() {
   return {
     group,
     led, // posición mundial del LED (para la luz)
-    update(cam, dt, { since = 9, ready = true, count = 0, danger = 0, lie = false } = {}) {
+    update(cam, dt, { since = 9, ready = true, hot = false, count = 0, danger = 0, lie = false } = {}) {
       time += dt;
       const target = since < .45 ? 1 : 0;
       shown += (target - shown) * Math.min(1, dt * (target ? 22 : 6));
@@ -147,8 +152,8 @@ export function createCelular() {
       led.set(.02, .06, -.01).applyMatrix4(group.matrixWorld);
 
       const tick = Math.floor(time * 16);
-      const state = { white: since < .13, photo: since >= .13 && since < 1.8, ready, count, danger, lie, tick };
-      const k = `${state.white}|${state.photo}|${ready}|${Math.floor(count / 3)}|${lie}|${danger > .03 ? tick : 0}`;
+      const state = { white: since < .13, photo: since >= .13 && since < 1.8, ready, hot, count, danger, lie, tick };
+      const k = `${state.white}|${state.photo}|${ready}|${hot}|${Math.floor(count / 3)}|${lie}|${danger > .03 ? tick : 0}`;
       if (k !== key) {
         key = k;
         drawScreen(g, state);

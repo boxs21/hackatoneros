@@ -15,7 +15,8 @@ export const VAGON = {
 
 const SEGMENTS = [[-12.9, -8.75], [-7.25, -0.75], [0.75, 7.25], [8.75, 12.9]];
 
-export function createVagon({ tubeFlicker = false, lit = false } = {}) {
+// roto = true: sin piso, sin bancas y sin suelo afuera (el vagón partido del Oficinista).
+export function createVagon({ tubeFlicker = false, lit = false, roto = false } = {}) {
   const vagon = new THREE.Group();
   const colliders = []; // { x, z, r }
   // piezas sueltas para que otros estados las cambien (anomalías)
@@ -50,7 +51,7 @@ export function createVagon({ tubeFlicker = false, lit = false } = {}) {
   }
 
   // piso, techo, curvas del techo
-  box(5, .15, 26, mats.suelo, 0, -.075, 0);
+  if (!roto) box(5, .15, 26, mats.suelo, 0, -.075, 0);
   box(3.6, .12, 26, mats.techo, 0, 3.12, 0);
   for (const s of [-1, 1]) {
     const curve = box(.9, .1, 26, mats.techo, s * 2.12, 2.98, 0);
@@ -77,10 +78,12 @@ export function createVagon({ tubeFlicker = false, lit = false } = {}) {
       }
       // banca
       const seatLen = len - .5;
-      box(.55, .12, seatLen, mats.asiento, s * 2.16, .46, mid);
-      box(.42, .4, seatLen, mats.base, s * 2.2, .2, mid);
-      const back = box(.1, .5, seatLen, mats.respaldo, s * 2.4, .8, mid);
-      back.rotation.z = s * -.12;
+      if (!roto) {
+        box(.55, .12, seatLen, mats.asiento, s * 2.16, .46, mid);
+        box(.42, .4, seatLen, mats.base, s * 2.2, .2, mid);
+        const back = box(.1, .5, seatLen, mats.respaldo, s * 2.4, .8, mid);
+        back.rotation.z = s * -.12;
+      }
       // barras verticales en los extremos de la banca
       for (const z of [a + .4, b - .4]) {
         if (Math.abs(z) > 12.5) continue;
@@ -104,7 +107,7 @@ export function createVagon({ tubeFlicker = false, lit = false } = {}) {
     box(.2, 6, 30, mats.tunel, s * 4.4, 1.5, 0);
     for (let z = -12; z <= 12; z += 3) box(.08, .08, 2.6, mats.goma, s * 4.25, 2.6 + (z % 2) * .1, z);
   }
-  box(9, .1, 30, mats.goma, 0, -.6, 0);
+  if (!roto) box(9, .1, 30, mats.goma, 0, -.6, 0);
 
   // barras horizontales del techo y manillas colgantes (instanciadas)
   const straps = [];

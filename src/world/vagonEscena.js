@@ -6,7 +6,7 @@ import { createCelular } from './celular.js';
 // Arma el vagón a oscuras dentro de ctx.stage: luces de emergencia, niebla,
 // la luz del flash (sale del celular) y la capa de pantalla.
 // lit = true: hora punta, luces encendidas y el tren andando (luces del túnel pasan).
-export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, tubeFlicker = false, lit = false, litColor = 0xeef4ff, litPower = 2.2 } = {}) {
+export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, tubeFlicker = false, lit = false, litColor = 0xeef4ff, litPower = 2.2, roto = false } = {}) {
   const { camera, stage, scene } = ctx;
   camera.rotation.order = 'YXZ';
   camera.position.set(0, 1.55, z);
@@ -14,7 +14,7 @@ export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, t
   scene.background = new THREE.Color(0x000000);
   scene.fog = lit ? new THREE.Fog(0x0d0e10, 8, 40) : new THREE.Fog(0x000000, 1.2, fogFar);
 
-  const vagon = createVagon({ tubeFlicker, lit });
+  const vagon = createVagon({ tubeFlicker, lit, roto });
   const hemi = new THREE.HemisphereLight(0x8aa0c8, 0x2a2018, ambient);
   // rojo tenue en las puertas de los extremos: la única referencia en la oscuridad
   const exitLight = new THREE.PointLight(0xff3020, 1.6, 7, 1);
@@ -78,7 +78,7 @@ export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, t
       time += dt;
       const now = performance.now();
       celular.update(camera, dt, flash
-        ? { since: flash.since(now), ready: flash.ready, count: flash.count, danger: this.danger, lie: this.lie }
+        ? { since: flash.since(now), ready: flash.ready, hot: flash.overheated, count: flash.count, danger: this.danger, lie: this.lie }
         : { danger: this.danger });
       camera.getWorldDirection(fwd);
       spot.position.copy(celular.led);
@@ -115,7 +115,8 @@ export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, t
 
 // Caminar en primera persona dentro del pasillo, con choques contra barras y gente.
 const STEP = { bob: 0 };
-export function walkVagon(dt, { camera, input }, { colliders = [], speed = 2.3, minZ = -12.4, maxZ = 12.4 } = {}) {
+export function walkVagon(dt, ctx, { colliders = [], speed = 2.3, minZ = -12.4, maxZ = 12.4 } = {}) {
+  const { camera, input } = ctx;
   camera.rotation.order = 'YXZ';
   const turn = Number(input.down('ArrowLeft')) - Number(input.down('ArrowRight'));
   camera.rotation.y += turn * dt * 2.2 - input.mouse.dx * .0022;
@@ -146,6 +147,12 @@ export function walkVagon(dt, { camera, input }, { colliders = [], speed = 2.3, 
   camera.position.z = z;
   const moved = Math.hypot(x - ox, z - oz);
   STEP.bob += moved * 5.5;
+  // pasos: uno cada ~70 cm (sonido de Andy)
+  STEP.dist = (STEP.dist || 0) + moved;
+  if (STEP.dist > .72) {
+    STEP.dist = 0;
+    ctx.audio?.sfx?.('paso', { volume: .28 });
+  }
   const target = 1.55 + (moved > 1e-4 ? Math.sin(STEP.bob) * .035 : 0);
   camera.position.y += (target - camera.position.y) * Math.min(1, dt * 14);
   return moved;

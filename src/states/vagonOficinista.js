@@ -1,334 +1,301 @@
-// Extra · Vagón del Oficinista: el vagón que se repite (anomalías, estilo The Exit 8).
-// Dueño: Camilo.
+// Extra · Vagón del Oficinista: el vagón roto (parkour). Dueño: Camilo.
 //
 // Jugabilidad:
-// - El vagón se repite. La primera vuelta siempre es normal: memorízalo.
-// - Cada vuelta decides: si todo está normal, SIGUE hacia la puerta del fondo.
-//   Si algo cambió, DATE VUELTA y sal por la puerta de atrás.
-// - Acierto = una estación menos para Casa (letrero sobre la puerta del fondo).
-//   Error = susto y vuelves a 0. Hay que acertar 3 seguidas.
-// - Nuestro giro: algunas anomalías solo se ven con el flash, y en este vagón
-//   también hay borrados sentados que se acercan con cada flash. Mirar cuesta.
-// - Anomalía peligrosa: uno camina hacia ti a oscuras. Si te alcanza, error.
+// - El vagón se partió: no hay piso, abajo solo hay vías y una luz roja. Quedan
+//   pedazos sueltos (piso, asientos, una puerta, maletas, un carro que flota).
+// - [Espacio] salta. Está oscuro: los bordes amarillos se ven solo de cerca.
+//   El flash [F] te muestra todo el camino por un instante. Miras, memorizas, saltas.
+// - Caer no duele: vuelves al último pedazo firme en un instante.
+// - Si te quedas quieto mucho rato en un pedazo, algo sube del vacío a buscarte.
+// - Al fondo, el maletín del Oficinista flota junto a la puerta. Sigue el Vendedor.
+// Ver mechanics/parkour.js para el salto (con "coyote time" y "buffer", perdonador).
 import * as THREE from 'three';
-import { createBorrados, CATCH_RADIUS } from '../mechanics/borrados.js';
 import { createFlash } from '../mechanics/flash.js';
-import { basic, lambert, pixelTexture } from '../world/ps1.js';
-import { textura, garabato } from '../world/texturas.js';
-import { setupVagon, walkVagon } from '../world/vagonEscena.js';
-import { createObjeto, createFigura, borradoGeometry } from '../world/figura.js';
-import { PASAJEROS } from '../world/pasajeros.js';
+import { createParkour } from '../mechanics/parkour.js';
+import { crearBolsillo } from '../mechanics/bolsillo.js';
+import { basic, lambert, seeded } from '../world/ps1.js';
+import { textura } from '../world/texturas.js';
+import { setupVagon } from '../world/vagonEscena.js';
+import { createObjeto, borradoGeometry } from '../world/figura.js';
 import { createScare, caughtFrame } from '../world/susto.js';
 
-const GOAL = 3;
-// Por dificultad: 0 obvias, 1 medias, 2 sutiles o con flash.
-const POOL = [
-  ['aviso', 'maletin', 'luces', 'puerta'],
-  ['mapa', 'manillas', 'espaldas', 'acecho', 'sinCara'],
-  ['caras', 'tiza', 'avisoGrande', 'acecho', 'sinCara'],
+// [x, z, ancho, largo, altura del borde de arriba, tipo, opciones]
+const PEDAZOS = [
+  [0, 11.4, 4.6, 3.2, 0, 'piso', { inicio: true }],
+  [-1.7, 8.4, .8, 1.5, .45, 'asiento'],
+  [-.2, 6.7, 1.3, .9, .2, 'puerta'],
+  [1.4, 5.0, 1.5, 1.4, -.1, 'piso'],
+  [.3, 3.4, .8, .7, .62, 'maleta'],
+  [-1.2, 1.8, 1.6, 1.4, .3, 'piso'],
+  [.9, .1, .9, 1.3, .8, 'asiento'],
+  [.2, -1.6, .8, .8, .55, 'carro', { dy: .22, speed: 1.1 }],
+  [-1.1, -3.3, 1.5, 1.6, .1, 'piso'],
+  [.9, -5.0, .8, .8, .55, 'maleta'],
+  [-.6, -6.6, 1.4, 1.2, .25, 'piso'],
+  [1.15, -8.3, .9, 1.4, .55, 'asiento'],
+  [-.2, -9.9, 1.2, .9, .3, 'puerta'],
+  [0, -11.8, 4.6, 2.2, 0, 'piso', { fin: true }],
 ];
-const NOMBRE = {
-  aviso: 'los avisos decían otra cosa',
-  maletin: 'el maletín en el asiento',
-  luces: 'las luces estaban rojas',
-  puerta: 'una puerta estaba abierta',
-  mapa: 'CASA estaba tachada en el mapa',
-  manillas: 'las manillas estaban todas inclinadas',
-  espaldas: 'había un hombre de espaldas al fondo',
-  acecho: 'algo venía caminando hacia ti',
-  caras: 'había caras en las ventanas (con flash)',
-  tiza: 'decía DATE VUELTA en el piso (con flash)',
-  avisoGrande: 'un aviso era más grande',
-  sinCara: 'había un pasajero sin cara mirando el celular',
-};
+const QUIETO = 5; // s quieto en un pedazo antes de que suba algo
+const AGARRA = 8.5; // s quieto: te agarra
 
 let S = null;
 
 export default {
   id: 'vagonOficinista',
   next: 'vagonVendedor',
-  hint: 'Compara con el primer vagón. Si algo cambió: date vuelta y sal por atrás. Si no: sigue adelante.',
+  hint: 'Salta con Espacio. Usa el flash [F] para ver los pedazos antes de saltar.',
   autoAdvance: true,
   enter(ctx, data = {}) {
-    const progress = data.progress || 0;
-    const loop = data.loop || 0;
-    const solved = data.solved || [];
-    const wrongStreak = data.wrongStreak || 0;
-    ctx.audio.ambiente('vagon');
-    const scene = setupVagon(ctx, { z: 10.6, ambient: .5, lit: true, litColor: 0xd9f0c8, litPower: 1.3 });
+    ctx.audio.ambiente('tunel');
+    const scene = setupVagon(ctx, { z: 11, ambient: .1, fogFar: 16, roto: true });
+    const stage = ctx.stage;
+    const mats = scene.vagon.parts.mats;
 
-    // los de siempre: sentados frente a las bancas, solo con flash (no son anomalía)
-    const crowd = createBorrados({ colliders: scene.colliders, seed: 77, zFrom: 20, zTo: 21, ladoTries: 16, fillOutside: false, reserve: 0 });
-    const scare = createScare();
-    ctx.stage.add(crowd.mesh, scare.group);
-    crowd.face(ctx.camera.position);
-
-    // ¿hay anomalía en esta vuelta?
-    let anomaly = null;
-    if (loop > 0) {
-      const tier = wrongStreak >= 3 ? 0 : Math.min(progress, 2);
-      const fresh = POOL[tier].filter((a) => !solved.includes(a));
-      const options = fresh.length ? fresh : POOL[tier];
-      if (wrongStreak >= 3 || Math.random() < .6) anomaly = options[Math.floor(Math.random() * options.length)];
+    // ---- el vacío: vías abajo y luz roja que sube
+    const vias = new THREE.Group();
+    const piedra = lambert({ map: textura('tunel', 2, 10) });
+    const riel = lambert({ color: 0x55504a });
+    vias.add(new THREE.Mesh(new THREE.BoxGeometry(5, .2, 30), piedra));
+    for (const x of [-.7, .7]) {
+      const r = new THREE.Mesh(new THREE.BoxGeometry(.08, .12, 30), riel);
+      r.position.set(x, .16, 0);
+      vias.add(r);
     }
-    if (ctx.demo && data.force) anomaly = data.force; // depurar/presentar: forzar una anomalía (solo ?demo=1)
+    vias.position.y = -5;
+    stage.add(vias);
+    for (const z of [8, 0, -8]) {
+      const l = new THREE.PointLight(0xff2a14, 3, 9, 1.2);
+      l.position.set(0, -3.5, z);
+      stage.add(l);
+    }
 
-    S = { scene, crowd, scare, anomaly, progress, loop, solved, wrongStreak, t: 0, decided: false, wrongT: -1,
-      flashOnly: [], extraCrowds: [], stalker: null, started: false, lines: [], lineAt: 0 };
-    if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
-    S.flash = createFlash({
-      onFire(count) {
-        ctx.audio.sfx('flash');
-        const pos = ctx.camera.position;
-        crowd.step(pos, count === 1 ? 0 : .3);
-        for (const c of S.extraCrowds) c.step(pos, .3);
-      },
+    // ---- los pedazos
+    const rnd = seeded(13);
+    const platforms = PEDAZOS.map(([x, z, w, d, top, tipo, opt = {}]) => {
+      const h = tipo === 'piso' ? .2 : tipo === 'maleta' ? .5 : tipo === 'carro' ? .3 : .15;
+      const mat = tipo === 'asiento' ? mats.asiento : tipo === 'puerta' ? mats.puerta
+        : tipo === 'maleta' ? lambert({ color: [0x3b2418, 0x2d3e6e, 0x5a2a2a][Math.floor(rnd() * 3)] }) : mats.suelo;
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      mesh.position.set(x, top - h / 2, z);
+      // roto y torcido (solo se ve: el choque usa la caja recta, así nadie se resbala)
+      if (!opt.inicio && !opt.fin) mesh.rotation.set((rnd() - .5) * .08, (rnd() - .5) * .25, (rnd() - .5) * .08);
+      stage.add(mesh);
+      // borde amarillo de seguridad: se ve de cerca (o con el flash)
+      const edgeMat = basic({ color: 0xf2b705, transparent: true, opacity: 0, fog: false, depthWrite: false });
+      for (const [ex, ez, ew, ed] of [[0, -d / 2, w, .04], [0, d / 2, w, .04], [-w / 2, 0, .04, d], [w / 2, 0, .04, d]]) {
+        const e = new THREE.Mesh(new THREE.BoxGeometry(ew, .02, ed), edgeMat);
+        e.position.set(ex, h / 2 + .012, ez);
+        mesh.add(e);
+      }
+      if (tipo === 'asiento') {
+        const back = new THREE.Mesh(new THREE.BoxGeometry(w * .2, .45, d), mats.respaldo);
+        back.position.set(x > 0 ? w * .4 : -w * .4, .28, 0);
+        mesh.add(back);
+      }
+      if (tipo === 'carro') {
+        const carro = createObjeto('carro');
+        carro.position.set(0, -h / 2 - .02, 0);
+        carro.scale.setScalar(1.3);
+        mesh.add(carro);
+      }
+      return {
+        minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, top, h, mesh, edgeMat,
+        cx: x, cz: z, baseTop: top, dy: opt.dy || 0, speed: opt.speed || 1, phase: rnd() * 6, inicio: opt.inicio, fin: opt.fin,
+      };
     });
 
-    // cartel de reglas (homenaje al aviso amarillo) y letrero de estaciones
-    const rules = new THREE.Mesh(new THREE.PlaneGeometry(.5, .75), basic({ map: textura('reglas') }));
-    rules.position.set(-2.42, 1.9, 9.3);
-    rules.rotation.y = Math.PI / 2;
-    ctx.stage.add(rules);
-    ctx.stage.add(ledSign(GOAL - progress));
-
-    applyAnomaly(ctx, S);
-
-    // textos de la vuelta
-    if (loop === 0) {
-      S.lines = [
-        [.6, 'Otro vagón. Vacío. La luz se ve… enferma.', 3200],
-        [4.2, 'Lee el aviso amarillo de tu izquierda.', 3000],
-        [7.6, 'Memoriza este vagón. Lo vas a volver a ver.', 3400],
-      ];
-    } else {
-      ctx.hud.title(String(GOAL - progress), GOAL - progress === 1 ? 'estación para Casa' : 'estaciones para Casa');
-      S.titleUntil = 1.6;
-      if (data.msg) S.lines = [[.3, data.msg, 2800]];
+    // ---- cosas raras: hojas flotando quietas, manillas hacia arriba, reloj al revés, maletín
+    const hoja = lambert({ color: 0xbdb8aa, side: THREE.DoubleSide }); // solo se ven con luz
+    for (let i = 0; i < 34; i++) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(.21, .29), hoja);
+      m.position.set((rnd() - .5) * 4.2, .4 + rnd() * 2.4, 12 - rnd() * 24);
+      m.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
+      stage.add(m);
     }
-    ctx.progress();
+    const P = scene.vagon.parts;
+    const o = new THREE.Object3D();
+    P.straps.list.forEach(([x, z], i) => {
+      o.position.set(x, 2.2, z);
+      o.rotation.set(0, Math.PI / 2, Math.PI + Math.sin(i * 1.7) * .3); // cuelgan hacia arriba
+      o.updateMatrix();
+      P.straps.strapMesh.setMatrixAt(i, o.matrix);
+      P.straps.ringMesh.setMatrixAt(i, o.matrix);
+    });
+    P.straps.strapMesh.instanceMatrix.needsUpdate = P.straps.ringMesh.instanceMatrix.needsUpdate = true;
+    const reloj = createReloj();
+    reloj.group.position.set(-1.5, 2.3, -12.86);
+    stage.add(reloj.group);
+    const maletin = createObjeto('maletin');
+    maletin.position.set(.6, 1.2, -12.2);
+    stage.add(maletin);
+
+    // ---- lo que sube del vacío si te quedas quieto
+    const mano = new THREE.Group();
+    mano.add(new THREE.Mesh(borradoGeometry(), basic({ color: 0x0b0b0e })));
+    const eyeMat = basic({ color: 0xffffff, fog: false });
+    for (const ex of [-.05, .05]) {
+      const eye = new THREE.Mesh(new THREE.BoxGeometry(.04, .035, .01), eyeMat);
+      eye.position.set(ex, 1.75, .16);
+      mano.add(eye);
+    }
+    mano.visible = false;
+    const scare = createScare();
+    stage.add(mano, scare.group);
+
+    const parkour = createParkour(ctx, platforms, { start: { x: 0, z: 11.2, plat: platforms[0] } });
+    S = { scene, platforms, parkour, reloj, maletin, mano, scare, t: 0, still: 0, stillOn: null, falls: data.falls || 0,
+      caught: -1, done: false, leaveAt: 0, blackT: 0, bestZ: 11 };
+    if (ctx.demo) window.__S = S;
+    S.bolsillo = crearBolsillo(ctx);
+    S.flash = createFlash({ onFire() { ctx.audio.sfx('flash', { multitud: false }); } });
+    ctx.misiones?.set('Cruza el vagón roto saltando [Espacio]');
+    S.lines = [
+      [.6, 'El vagón se partió. Abajo no hay piso… solo las vías.', 3200],
+      [4.2, '[Espacio] saltar · [F] el flash te muestra dónde pisar', 4200],
+    ];
   },
   update(dt, ctx) {
     if (!S) return;
-    const { scene, crowd, flash, scare } = S;
+    const { scene, platforms, parkour, flash, mano, scare } = S;
     const cam = ctx.camera;
     const now = performance.now();
     S.t += dt;
-    if (S.titleUntil && S.t > S.titleUntil) { S.titleUntil = 0; ctx.hud.title(''); }
     while (S.lines.length && S.t >= S.lines[0][0]) {
       const [, text, ms] = S.lines.shift();
       ctx.hud.subtitle(text, ms);
     }
 
-    // error: susto y de vuelta a cero
-    if (S.wrongT >= 0) {
-      S.wrongT += dt;
-      const shown = caughtFrame(scene, scare, cam, dt, S.wrongT);
-      if (shown > .6 && !S.decided) {
-        S.decided = true;
-        ctx.go(this.id, { progress: 0, loop: S.loop + 1, solved: S.solved, wrongStreak: S.wrongStreak + 1, msg: S.failMsg });
+    // te agarró lo que subió: susto y vuelves al último pedazo firme
+    if (S.caught >= 0) {
+      S.caught += dt;
+      const shown = caughtFrame(scene, scare, cam, dt, S.caught);
+      if (shown > .5) {
+        S.caught = -1;
+        scare.group.visible = false;
+        scene.overlay.u.uCaught.value = 0;
+        scene.overlay.u.uBlack.value = 0;
+        mano.visible = false;
+        S.still = 0;
+        parkour.respawn();
+        parkour.update(0);
       }
       return;
     }
 
-    walkVagon(dt, ctx, { colliders: scene.colliders.concat(S.blockers || []), speed: 2.0, minZ: -12.4, maxZ: 12.45 });
-    if (cam.position.z < 9.6) S.started = true;
+    const r = parkour.update(S.done ? 0 : dt);
+    S.bolsillo.update(cam);
+    if (S.done && S.leaveAt && S.t > S.leaveAt) { S.leaveAt = 0; ctx.next(); }
 
-    if (!S.decided && ctx.input.pressed('KeyF')) flash.fire(now);
+    // caer: negro un instante y de vuelta al último pedazo firme
+    if (r.fell) {
+      S.falls += 1;
+      S.blackT = .35;
+      S.still = 0;
+      mano.visible = false;
+      ctx.audio.sfx('crujido');
+      if (S.falls === 2) ctx.hud.subtitle('Usa el flash [F] antes de saltar: así ves dónde caer.', 3600);
+      ctx.progress();
+    }
+    S.blackT = Math.max(0, S.blackT - dt);
+    scene.overlay.u.uBlack.value = S.blackT / .35;
+
+    // flash y bordes: de cerca se ven siempre; con el flash, todos
+    if (!S.done && ctx.input.pressed('KeyF')) flash.fire(now);
     const level = ctx.demo && window.__fdsHold ? 1 : flash.level(now);
     const glow = flash.glow(now);
-    crowd.show(level, glow);
-    for (const c of S.extraCrowds) c.show(level, glow);
-    const chalk = Math.max(level, glow * .75);
-    for (const m of S.flashOnly) m.material.opacity = chalk;
-
-    // el que camina hacia ti (anomalía peligrosa)
-    if (S.stalker && S.started && !S.decided) S.stalker.crowd.nudge(S.stalker.p, cam.position, dt * .55, 0);
-
-    // peligro: radar del celular y viñeta
-    let d = crowd.nearest(cam.position);
-    for (const c of S.extraCrowds) d = Math.min(d, c.nearest(cam.position));
-    scene.danger = THREE.MathUtils.clamp((1.6 - d) / 1.1, 0, 1);
-    // el que te acecha se siente en el celular desde lejos (aviso justo)
-    if (S.stalker) {
-      const ds = S.stalker.crowd.nearest(cam.position);
-      scene.danger = Math.max(scene.danger, THREE.MathUtils.clamp((6 - ds) / 5, 0, 1) * .85);
-      if (ds < 6 && Math.floor(S.t * 1.4) !== Math.floor((S.t - dt) * 1.4)) ctx.audio.sfx('paso', { cerca: ds < 3 });
-    }
     scene.light(level, dt, flash);
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .6;
-    const danger = THREE.MathUtils.clamp((1.35 - d) / .9, 0, 1);
-    scene.overlay.u.uDanger.value += (danger - scene.overlay.u.uDanger.value) * Math.min(1, dt * 8);
-    if (d < CATCH_RADIUS && !S.decided) {
-      fail(ctx, S.anomaly === 'acecho' ? 'Te alcanzó. Cuando algo viene hacia ti: date vuelta.' : 'Te atraparon. Cada flash los acerca.');
-      return;
+    for (const pl of platforms) {
+      const d = Math.hypot(pl.cx - cam.position.x, pl.cz - cam.position.z);
+      pl.edgeMat.opacity = Math.max(THREE.MathUtils.clamp((4.6 - d) / 2.2, 0, 1), level, glow * .8);
+    }
+    S.reloj.update(dt);
+    S.maletin.rotation.y += dt * .4;
+    S.maletin.position.y = 1.2 + Math.sin(S.t * .9) * .08;
+
+    // progreso real (reinicia la pista de los 30 s)
+    if (parkour.grounded && parkour.player.z < S.bestZ - 1.5) {
+      S.bestZ = parkour.player.z;
+      ctx.progress();
     }
 
-    // la decisión
-    if (S.decided) return;
-    if (cam.position.z < -11.9) decide(ctx, false);
-    else if (cam.position.z > 12.2 && S.t > 1.2) decide(ctx, true);
+    // quedarse quieto en un pedazo: algo sube del vacío
+    const g = parkour.ground;
+    if (g && !g.inicio && !g.fin && g === S.stillOn) S.still += dt;
+    else { S.still = 0; S.stillOn = g; mano.visible = false; }
+    if (S.still > QUIETO && g) {
+      const k = Math.min(1, (S.still - QUIETO) / (AGARRA - QUIETO));
+      if (!mano.visible) {
+        mano.visible = true;
+        const side = g.cx > 0 ? 1 : -1;
+        mano.userData.x = THREE.MathUtils.clamp(g.cx - side * ((g.maxX - g.minX) * .5 + .35), -2.1, 2.1);
+        mano.userData.z = THREE.MathUtils.clamp(cam.position.z, g.minZ, g.maxZ);
+        ctx.audio.sfx('crujido');
+        ctx.hud.subtitle('Algo sube desde las vías…', 2200);
+      }
+      mano.position.set(mano.userData.x, g.top - 2.2 + k * 1.9, mano.userData.z);
+      mano.lookAt(cam.position.x, mano.position.y, cam.position.z);
+      scene.danger = k;
+      if (S.still >= AGARRA) {
+        S.still = 0;
+        if (!S.bolsillo.salvar([], cam, scene)) {
+          S.caught = 0;
+          ctx.audio.sfx('atrapado');
+          scare.show(null, cam);
+        } else {
+          mano.visible = false;
+        }
+      }
+    } else {
+      scene.danger = 0;
+    }
+
+    // llegar al fondo
+    if (!S.done && g?.fin) {
+      S.done = true;
+      ctx.audio.sfx('notificacion');
+      ctx.hud.subtitle('Su maletín flota junto a la puerta. El oficinista no está.', 3200);
+      S.leaveAt = S.t + 1.8;
+      ctx.misiones?.set(null);
+    }
   },
-  exit() {
+  exit(ctx) {
     S?.scene.dispose();
     S = null;
+    ctx.misiones?.set(null);
   },
 };
 
-function decide(ctx, saidAnomaly) {
-  const correct = saidAnomaly === Boolean(S.anomaly);
-  if (!correct) {
-    fail(ctx, S.anomaly ? `Había algo: ${NOMBRE[S.anomaly]}.` : 'No había nada raro.');
-    return;
-  }
-  S.decided = true;
-  ctx.audio.sfx('notificacion');
-  const progress = S.progress + 1;
-  const solved = S.anomaly ? [...S.solved, S.anomaly] : S.solved;
-  if (progress >= GOAL) {
-    ctx.hud.subtitle('El vagón deja de repetirse. El Oficinista no volvió.', 3200);
-    ctx.next();
-    return;
-  }
-  const msg = S.anomaly ? `Bien visto: ${NOMBRE[S.anomaly]}.` : 'Todo estaba normal. Bien.';
-  ctx.go('vagonOficinista', { progress, loop: S.loop + 1, solved, wrongStreak: 0, msg });
-}
-
-function fail(ctx, msg) {
-  S.wrongT = 0;
-  S.failMsg = `${msg} Vuelves a empezar.`;
-  ctx.audio.sfx('susto');
-  ctx.audio.sfx('atrapado');
-  S.scare.show(null, ctx.camera);
-}
-
-// Letrero LED sobre la puerta del fondo: cuántas estaciones faltan.
-function ledSign(left) {
+// Reloj de pared que corre hacia atrás.
+function createReloj() {
   const c = document.createElement('canvas');
-  c.width = 64;
-  c.height = 16;
+  c.width = 32;
+  c.height = 32;
   const g = c.getContext('2d');
-  g.fillStyle = '#0a0705';
-  g.fillRect(0, 0, 64, 16);
-  g.fillStyle = '#ff9a1f';
-  g.font = 'bold 9px monospace';
-  g.fillText(left > 0 ? `CASA  -${left}` : 'CASA', 6, 12);
-  for (let y = 0; y < 16; y += 2) {
-    g.fillStyle = 'rgba(0,0,0,.35)';
-    g.fillRect(0, y, 64, 1);
+  g.fillStyle = '#e8e4d6';
+  g.beginPath();
+  g.arc(16, 16, 15, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#222';
+  for (let i = 0; i < 12; i++) {
+    const a = i / 12 * Math.PI * 2;
+    g.fillRect(16 + Math.sin(a) * 12 - 1, 16 - Math.cos(a) * 12 - 1, 2, 2);
   }
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(.9, .22), basic({ map: pixelTexture(c) }));
-  sign.position.set(0, 2.62, -12.85);
-  return sign;
-}
-
-function applyAnomaly(ctx, S) {
-  const { scene } = S;
-  const P = scene.vagon.parts;
-  const stage = ctx.stage;
-  switch (S.anomaly) {
-    case 'aviso': {
-      const m = lambert({ map: textura('avisoMal') });
-      P.ads.forEach((ad) => { ad.material = m; });
-      break;
-    }
-    case 'avisoGrande': {
-      const ad = P.ads[1 + Math.floor(Math.random() * (P.ads.length - 2))];
-      ad.scale.set(1, 1.5, 1.5);
-      break;
-    }
-    case 'mapa': {
-      const m = lambert({ map: textura('mapaTachado') });
-      P.maps.forEach((map) => { map.material = m; });
-      break;
-    }
-    case 'luces': {
-      P.mats.tubo.color.setHex(0xff5040);
-      P.mats.emergencia.color.setHex(0xff1010);
-      break;
-    }
-    case 'manillas': {
-      const o = new THREE.Object3D();
-      P.straps.list.forEach(([x, z], i) => {
-        o.position.set(x, 2.2, z);
-        o.rotation.set(0, Math.PI / 2, .55);
-        o.updateMatrix();
-        P.straps.strapMesh.setMatrixAt(i, o.matrix);
-        P.straps.ringMesh.setMatrixAt(i, o.matrix);
-      });
-      P.straps.strapMesh.instanceMatrix.needsUpdate = P.straps.ringMesh.instanceMatrix.needsUpdate = true;
-      break;
-    }
-    case 'maletin': {
-      const m = createObjeto('maletin');
-      m.position.set(-2.1, .52, 1.6);
-      m.rotation.y = .3;
-      stage.add(m);
-      break;
-    }
-    case 'espaldas': {
-      const look = PASAJEROS.find((p) => p.name === 'Oficinista').look;
-      const fig = createFigura(look);
-      fig.root.position.set(.75, 0, -10.6);
-      fig.root.rotation.y = Math.PI; // de espaldas
-      fig.head.rotation.x = .35; // cabeza gacha
-      stage.add(fig.root);
-      S.blockers = [{ x: .75, z: -10.6, r: .25 }];
-      break;
-    }
-    case 'puerta': {
-      for (const leaf of P.leaves) {
-        if (leaf.dz === 0 && leaf.s === 1) leaf.mesh.position.z += leaf.k * .62;
-      }
-      // alguien parado afuera, en el túnel, mirando hacia adentro
-      const fig = new THREE.Mesh(borradoGeometry(), basic({ color: 0x050505 }));
-      fig.position.set(3.1, -.15, .1);
-      fig.rotation.y = -Math.PI / 2;
-      stage.add(fig);
-      break;
-    }
-    case 'caras': {
-      const faces = createBorrados({ seed: 5, zFrom: 20, zTo: 21, ladoTries: 0, reserve: 0, count: 70 });
-      faces.face(ctx.camera.position);
-      stage.add(faces.mesh);
-      S.extraCrowds.push(faces);
-      break;
-    }
-    case 'tiza': {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(1.4, .7), basic({ map: garabato('DATE\nVUELTA'), transparent: true, opacity: 0, depthWrite: false }));
-      m.position.set(0, .012, 2.4);
-      m.rotation.set(-Math.PI / 2, 0, Math.PI);
-      stage.add(m);
-      S.flashOnly.push(m);
-      break;
-    }
-    case 'acecho': {
-      const stalker = createBorrados({ seed: 9, zFrom: 20, zTo: 21, ladoTries: 0, reserve: 1, fillOutside: false });
-      stalker.convert(0, -11.6);
-      stalker.face(ctx.camera.position);
-      stage.add(stalker.mesh);
-      S.extraCrowds.push(stalker);
-      S.stalker = { crowd: stalker, p: stalker.people[0] };
-      break;
-    }
-    case 'sinCara': {
-      // Sentado, cabeza gacha, mirando un celular… y sin cara (el impostor).
-      const fig = createFigura({ ropa: 0x1e2a44, pantalon: 0x1e2a44, piel: '#c99672', pelo: '#17130f' });
-      fig.head.material = fig.head.material.slice();
-      fig.head.material[4] = fig.head.material[0]; // la cara queda lisa
-      fig.head.rotation.x = .55;
-      fig.armL.rotation.x = -1.1;
-      fig.armR.rotation.x = -1.1;
-      fig.root.position.set(1.98, -.38, -4.2);
-      fig.root.rotation.y = -Math.PI / 2;
-      const phone = new THREE.Mesh(new THREE.BoxGeometry(.07, .12, .01), basic({ color: 0x9fd0ff }));
-      phone.position.set(0, 1.08, .3);
-      phone.rotation.x = -.9;
-      fig.root.add(phone);
-      stage.add(fig.root);
-      break;
-    }
-    default:
-      break;
-  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.magFilter = tex.minFilter = THREE.NearestFilter;
+  const group = new THREE.Group();
+  group.add(new THREE.Mesh(new THREE.PlaneGeometry(.5, .5), basic({ map: tex, transparent: true })));
+  const manoMat = basic({ color: 0x111111 });
+  const minutero = new THREE.Mesh(new THREE.BoxGeometry(.015, .2, .01).translate(0, .1, 0), manoMat);
+  const horario = new THREE.Mesh(new THREE.BoxGeometry(.02, .13, .01).translate(0, .065, 0), manoMat);
+  minutero.position.z = horario.position.z = .01;
+  group.add(minutero, horario);
+  return {
+    group,
+    update(dt) {
+      minutero.rotation.z += dt * 2.4; // hacia atrás
+      horario.rotation.z += dt * .2;
+    },
+  };
 }
