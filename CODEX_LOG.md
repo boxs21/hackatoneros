@@ -98,3 +98,4 @@ No son recursos incluidos en el juego: son lecturas de las que salieron decision
 - Referencia de estilo para el primer menú y el modo pintura: Clair Obscur: Expedition 33 (Sandfall Interactive). Se tomó el lenguaje visual, no arte, logos ni música.
 - 2026-11-23 Camilo: los controles de movimiento (WASD · Mouse) ahora salen en una tarjeta al inicio de Hora punta, con la escena quieta, antes del título y los subtítulos; se quitaron los avisos W/Mouse de horaPunta en ui/tutorial.js (de Renato, con permiso de Camilo).
 - 2026-11-23 Camilo: en Los borrados la misión es sacarle una foto a cada sobreviviente (n/4); la muerte la dispara la foto que le apunta a uno (no un flash cualquiera) y, desde la 2.ª foto, se avisa una vez que los borrados se acercaron.
+- 2026-11-23 Camilo: se quitó la opción ESCENAS del menú de inicio (menu.js, de Andy, a pedido de Camilo); para saltar escenas queda ?demo=1.

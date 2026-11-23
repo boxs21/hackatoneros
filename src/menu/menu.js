@@ -36,13 +36,7 @@ const F = {
 };
 const ACENTO = { '́': 6, '̃': 14 }; // tilde aguda y virgulilla, dos filas sobre la letra
 
-const OPCIONES = [['comenzar', 'COMENZAR'], ['como', 'CÓMO SE JUEGA'], ['creditos', 'CRÉDITOS'], ['escenas', 'ESCENAS']];
-// Atajos para probar: el panel ESCENAS salta directo a cualquier momento del juego.
-const ESCENAS = {
-  horaPunta: 'HORA PUNTA', apagon: 'EL APAGÓN', losCinco: 'LOS CINCO', borrados: 'LOS BORRADOS',
-  vagonEscolar: 'VAGÓN DEL ESCOLAR', vagonVendedor: 'VAGÓN DEL VENDEDOR', final: 'FINAL',
-  vagonOficinista: 'VAGÓN DEL OFICINISTA', despertar: 'DESPERTAR',
-};
+const OPCIONES = [['comenzar', 'COMENZAR'], ['como', 'CÓMO SE JUEGA'], ['creditos', 'CRÉDITOS']];
 const PANELES = {
   como: ['CÓMO SE JUEGA', 'LLEGA A CASA SIN QUE TE TOQUEN.', 'WASD  MOVERSE · MOUSE  MIRAR', 'F  FOTO. VES, PERO SE ACERCAN.', 'E  USAR · ESPACIO  SALTAR', '1 2  RESPONDER · TAB  MISIONES', 'ESC  PAUSA Y MENÚ', 'MEJOR CON AUDÍFONOS.'],
   creditos: ['CRÉDITOS', '', 'VALENTÍN CASTRO', 'CAMILO BUFADEL', 'RENATO LENIS', 'ANDY VILLARROEL', 'MÚSICA: BEFORE THE CITY WAKES', 'HECHO CON CODEX'],
@@ -79,11 +73,6 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
   }
 
   let sel = 0, panel = null, vivo = true, raf = 0, reloj = 0, antes = performance.now(), entrada = 0;
-  // escenas a las que se puede saltar (todas menos este menú), en el orden del juego
-  const escenas = ctx.fsm.ids.filter((id) => id !== 'inicio');
-  let selEscena = 0;
-  const cajaEscena = (i) => ({ x: 14, y: 111 + i * 10, w: 208, h: 10 });
-
   // --- Texto en matriz de puntos -------------------------------------------
 
   const ancho = (txt, e = 1) => [...txt.normalize('NFD')].filter((c) => !ACENTO[c]).length * 6 * e - e;
@@ -154,18 +143,7 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
     texto(g, AVISO, centro(AVISO, 1), 68, 1, GRIS);
     texto(g, 'MÚSICA · BEFORE THE CITY WAKES', 14, 226, 1, GRIS);
 
-    if (panel === 'escenas') {
-      g.fillStyle = 'rgba(0, 0, 0, 0.8)'; g.fillRect(12, 92, 212, 118);
-      g.fillStyle = AMBAR; g.fillRect(12, 92, 212, 1); g.fillRect(12, 92, 1, 118);
-      texto(g, 'ESCENAS · IR DIRECTO', 22, 102, 1, AMBAR);
-      escenas.forEach((id, i) => {
-        const activa = i === selEscena;
-        const y = 112 + i * 10;
-        if (activa) texto(g, '>', 16, y, 1, AMBAR);
-        texto(g, `${i + 1} ${ESCENAS[id] ?? id.toUpperCase()}`, 26, y, 1, activa ? AMBAR : TINTA);
-      });
-      texto(g, 'ENTER · IR   ESC · VOLVER', 22, 201, 1, GRIS);
-    } else if (panel) {
+    if (panel) {
       g.fillStyle = 'rgba(0, 0, 0, 0.8)'; g.fillRect(12, 92, 212, 118);
       g.fillStyle = AMBAR; g.fillRect(12, 92, 212, 1); g.fillRect(12, 92, 1, 118);
       PANELES[panel].forEach((linea, i) => texto(g, linea, 22, 102 + i * 11, 1, i === 0 ? AMBAR : TINTA));
@@ -216,35 +194,11 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
     alSalir?.();
     setTimeout(() => { if (vivo) alComenzar?.(); }, 1250);
   }
-  // Salto directo a una escena (para probar): sin esperar la salida larga del menú.
-  function irEscena(i) {
-    const id = escenas[i];
-    if (!id || raiz.dataset.fase !== 'menu') return;
-    raiz.dataset.fase = 'saliendo';
-    ctx.audio.sfx('notificacion', { volume: 0.5 });
-    ctx.input.lockPointer(); // tiene que ir dentro del gesto del jugador
-    ctx.audio.musica(null, { fade: 0.3 });
-    ctx.go(id);
-  }
-  function marcarEscena(i) {
-    const n = (i + escenas.length) % escenas.length;
-    if (n !== selEscena) ctx.audio.sfx('ui', { volume: 0.5 });
-    selEscena = n;
-  }
-  function teclaEscenas(e) {
-    const m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code);
-    if (m) { e.preventDefault(); irEscena(Number(m[1]) - 1); }
-    else if (e.code === 'ArrowUp' || e.code === 'KeyW') { e.preventDefault(); marcarEscena(selEscena - 1); }
-    else if (e.code === 'ArrowDown' || e.code === 'KeyS') { e.preventDefault(); marcarEscena(selEscena + 1); }
-    else if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); irEscena(selEscena); }
-    else if (e.code === 'Escape' || e.code === 'Backspace') { e.preventDefault(); panel = null; }
-  }
   function tecla(e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (ctx.demo && /^(Digit\d|KeyN|KeyR|KeyH)$/.test(e.code)) return; // teclas del modo demo
     if (raiz.dataset.fase === 'umbral') { entrar(); return; }
     if (raiz.dataset.fase !== 'menu') return;
-    if (panel === 'escenas') { teclaEscenas(e); return; }
     if (panel) { if (['Escape', 'Enter', 'Space', 'Backspace'].includes(e.code)) { e.preventDefault(); panel = null; } return; }
     if (e.code === 'ArrowUp' || e.code === 'KeyW') { e.preventDefault(); marcar(sel - 1); }
     else if (e.code === 'ArrowDown' || e.code === 'KeyS') { e.preventDefault(); marcar(sel + 1); }
@@ -256,29 +210,13 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
     const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
     return cajasOpciones.findIndex((c) => x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h);
   }
-  function escenaEn(e) {
-    const r = lienzo.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
-    return escenas.findIndex((_, i) => { const c = cajaEscena(i); return x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h; });
-  }
   function click(e) {
     if (raiz.dataset.fase === 'umbral') { entrar(); return; }
-    if (panel === 'escenas') {
-      const i = escenaEn(e);
-      if (i >= 0) irEscena(i); else panel = null;
-      return;
-    }
     if (panel) { panel = null; return; }
     const i = opcionEn(e);
     if (i >= 0) { sel = i; elegir(OPCIONES[i][0]); }
   }
   function mover(e) {
-    if (raiz.dataset.fase === 'menu' && panel === 'escenas') {
-      const i = escenaEn(e);
-      raiz.style.cursor = i >= 0 ? 'pointer' : 'default';
-      if (i >= 0) marcarEscena(i);
-      return;
-    }
     if (raiz.dataset.fase !== 'menu' || panel) { raiz.style.cursor = 'default'; return; }
     const i = opcionEn(e);
     raiz.style.cursor = i >= 0 ? 'pointer' : 'default';
