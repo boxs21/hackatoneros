@@ -16,25 +16,27 @@ export const REGALOS = {
     uso: '[F] flash',
     linea: 'OFICINISTA: ¿Me tiene el celular? Tiene linterna.',
   },
+  // Ingrediente obligatorio: el completo italiano tiene que cambiar la partida.
+  // Tomate y palta de la feria: con [E] lo tiras y los borrados se van al olor.
   Señora: {
-    id: 'estampita',
-    nombre: 'Estampita',
+    id: 'completo',
+    nombre: 'Completo italiano',
     de: 'de la señora',
-    uso: 'te salva una vez',
-    linea: 'SEÑORA: Llévese esta estampita, mijo. A mí me cuida.',
+    uso: '[E] tirarlo: se van al olor',
+    linea: 'SEÑORA: Tome, mijo, un completo italiano. La palta y el tomate son de la feria.',
   },
   Vendedor: {
     id: 'chocolate',
     nombre: 'Chocolate',
     de: 'del vendedor',
-    uso: '[E] tirarlo para que se alejen',
-    linea: 'VENDEDOR: Tome igual, este va por la casa.',
+    uso: 'te salva una vez',
+    linea: 'VENDEDOR: Tome igual, este va por la casa. Pa’l susto.',
   },
 };
 
 const ORDEN = ['Oficinista', 'Escolar', 'Señora', 'Vendedor'];
 const VISIBLE = new Set(['horaPunta', 'borrados']);
-const TODOS = { celular: true, llavero: true, estampita: true, chocolate: true };
+const TODOS = { celular: true, llavero: true, completo: true, chocolate: true };
 
 let box = null;
 let usados = new Set();
