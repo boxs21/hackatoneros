@@ -27,9 +27,9 @@ const ORDEN = ['baja', 'media', 'alta'];
 // Trazo (tecla V): cuánto se parece a un cuadro. "mezcla" es el punto medio:
 // pincelada suave de cerca y foco de cámara leve, sin perder la escena.
 const TRAZOS = {
-  nitido: { nombre: 'nítido', cerca: 0, dof: 0, apertura: 0, blur: 0, bloom: .34, ca: .004 },
-  mezcla: { nombre: 'mezcla', cerca: .42, dof: 1, apertura: .34, blur: 3.6, bloom: .38, ca: .007 },
-  oleo: { nombre: 'óleo', cerca: 1, dof: 1, apertura: .78, blur: 6.5, bloom: .44, ca: .012 },
+  nitido: { nombre: 'nítido', estira: 1, cerca: 0, dof: 0, apertura: 0, blur: 0, bloom: .34, ca: .004 },
+  mezcla: { nombre: 'mezcla', estira: 1.4, cerca: .42, dof: 1, apertura: .34, blur: 3.6, bloom: .38, ca: .007 },
+  oleo: { nombre: 'óleo', estira: 2.2, cerca: 1, dof: 1, apertura: .78, blur: 6.5, bloom: .44, ca: .012 },
 };
 
 // Un color dominante por momento (como los cuadros de una misma serie).
@@ -68,7 +68,8 @@ export function createGfx(ctx) {
   const U_NIEBLA = { value: new THREE.Vector3(.05, .14, .7) };
   const texel = () => ({ value: new THREE.Vector2() });
   const U = {
-    oleo: { ...cam, tColor: { value: null }, tDepth: { value: null }, uTexel: texel(), uRadio: { value: 3 }, uTemblor: { value: 2.2 }, uCerca: { value: .42 }, uAspect: { value: ASPECT }, uNiebla: U_NIEBLA, uNieblaAmb: { value: 0 }, uNieblaFlash: { value: .5 }, uDens: { value: .15 }, uBruma: { value: 0 } },
+    oleo: { ...cam, tColor: { value: null }, tDepth: { value: null }, uTexel: texel(), tTensor: { value: null }, uTexelT: texel(), uRadio: { value: 3 }, uEstira: { value: 1.2 }, uCerca: { value: .42 }, uAspect: { value: ASPECT }, uNiebla: U_NIEBLA, uNieblaAmb: { value: 0 }, uNieblaFlash: { value: .5 }, uDens: { value: .15 }, uBruma: { value: 0 } },
+    tensor: { ...cam, tColor: { value: null }, uTexel: texel() },
     ao: { ...cam, tColor: { value: null }, tDepth: { value: null }, tFoco: { value: null }, uTexel: texel(), uTan: { value: new THREE.Vector2() }, uAo: { value: .8 }, uDof: { value: 0 }, uMaxBlur: { value: 0 }, uApertura: { value: 0 }, uSsr: { value: 0 }, uCamY: { value: 1.55 }, uUp: { value: new THREE.Vector3(0, 1, 0) } },
     dof: { ...cam, tColor: { value: null }, tDepth: { value: null }, tFoco: { value: null }, uTexel: texel(), uTan: { value: new THREE.Vector2() }, uAo: { value: 0 }, uDof: { value: 1 }, uMaxBlur: { value: 5 }, uApertura: { value: .6 }, uSsr: { value: 0 }, uCamY: { value: 1.55 }, uUp: { value: new THREE.Vector3(0, 1, 0) } },
     foco: { ...cam, tDepth: { value: null }, tPrev: { value: null }, uK: { value: .1 } },
@@ -80,6 +81,7 @@ export function createGfx(ctx) {
     final: { ...cam, tColor: { value: null }, tBloom: { value: null }, tRayos: { value: null }, tRetina: { value: null }, tDepth: { value: null }, uTime: { value: 0 }, uAspect: { value: ASPECT }, uBloom: { value: .5 }, uRayos: { value: .8 }, uRetina: { value: 0 }, uLavado: { value: .3 }, uRaya: { value: .2 }, uNiebla: U_NIEBLA, uExpo: { value: 1.25 }, uCA: { value: .012 }, uVirado: { value: .8 }, uLit: { value: 0 }, uBarras: { value: 0 }, uTela: { value: 1 } },
   };
   const M = {
+    tensor: mat(SH.TENSOR, U.tensor),
     oleo: mat(SH.OLEO, U.oleo),
     ao: mat(SH.LENTE, U.ao),
     dof: mat(SH.LENTE, U.dof),
@@ -94,7 +96,7 @@ export function createGfx(ctx) {
 
   // ---------- lienzos (render targets) ----------
   const hdr = { type: THREE.HalfFloatType, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter };
-  const R = { escena: null, a: null, b: null, mips: [], rayos: null, retina: [], foco: [] };
+  const R = { escena: null, a: null, b: null, tensor: null, mips: [], rayos: null, retina: [], foco: [] };
   for (let i = 0; i < 2; i++) R.foco.push(new THREE.WebGLRenderTarget(1, 1, { ...hdr, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter }));
   let W = 0;
   let H = 0;
@@ -104,7 +106,7 @@ export function createGfx(ctx) {
 
   function liberar() {
     R.escena?.depthTexture?.dispose();
-    [R.escena, R.a, R.b, R.rayos, ...R.mips, ...R.retina].forEach((t) => t?.dispose());
+    [R.escena, R.a, R.b, R.tensor, R.rayos, ...R.mips, ...R.retina].forEach((t) => t?.dispose());
     R.mips = [];
     R.retina = [];
   }
@@ -121,6 +123,7 @@ export function createGfx(ctx) {
     R.escena = new THREE.WebGLRenderTarget(W, H, { ...hdr, depthBuffer: true, depthTexture: depth, samples: nivel.msaa });
     R.a = new THREE.WebGLRenderTarget(W, H, hdr);
     R.b = new THREE.WebGLRenderTarget(W, H, hdr);
+    R.tensor = new THREE.WebGLRenderTarget(W >> 1, H >> 1, hdr); // dirección del trazo
     let mw = W >> 1;
     let mh = H >> 1;
     for (let i = 0; i < 5 && mh > 8; i++) {
@@ -131,6 +134,8 @@ export function createGfx(ctx) {
     R.rayos = new THREE.WebGLRenderTarget(W >> 2, H >> 2, hdr);
     for (let i = 0; i < 2; i++) R.retina.push(new THREE.WebGLRenderTarget(W >> 2, H >> 2, hdr));
     U.oleo.uTexel.value.set(1 / W, 1 / H);
+    U.oleo.uTexelT.value.set(1 / (W >> 1), 1 / (H >> 1));
+    U.tensor.uTexel.value.set(1 / W, 1 / H);
     U.ao.uTexel.value.set(1 / W, 1 / H);
     U.dof.uTexel.value.set(1 / W, 1 / H);
     U.brillo.uTexel.value.set(1 / W, 1 / H);
@@ -187,8 +192,10 @@ export function createGfx(ctx) {
       .replace('p.x *= 1.333;', 'p.x *= uGfxRes.x / uGfxRes.y;')
       .replace('gl_FragCoord.xy - vec2(160.0, 120.0)', 'gl_FragCoord.xy - uGfxRes * 0.5')
       .replace('max(px.x, px.y) < 1.5', 'max(px.x, px.y) < uGfxRes.y / 190.0')
-      // sus colores están pensados para la pantalla; aquí se mezclan en luz lineal
-      .replace('over(c, a, vec3(g), 0.06);', 'over(c, a, vec3(g), 0.02);')
+      // sus colores están pensados para la pantalla; aquí se mezclan en luz lineal.
+      // Su grano (cambia 24 veces por segundo) en luz lineal hierve en las sombras:
+      // en el cuadro la textura la pone la tela del revelado, que no se mueve.
+      .replace('over(c, a, vec3(g), 0.06);', 'over(c, a, vec3(g), 0.0);')
       .replace('gl_FragColor = vec4(a > 0.0 ? c / a : c, a);', 'gl_FragColor = vec4(pow(a > 0.0 ? c / a : c, vec3(2.2)), a);');
     m.needsUpdate = true;
     overlayU = m.uniforms;
@@ -356,6 +363,7 @@ export function createGfx(ctx) {
     GFX.trazo = nombre;
     trazo = TRAZOS[nombre];
     U.oleo.uCerca.value = trazo.cerca;
+    U.oleo.uEstira.value = trazo.estira;
     U.dof.uApertura.value = trazo.apertura;
     U.dof.uMaxBlur.value = trazo.blur;
   }
@@ -563,8 +571,11 @@ export function createGfx(ctx) {
       pasada(M.ao, R.b);
       fuente = R.b.texture;
     }
+    U.tensor.tColor.value = fuente;
+    pasada(M.tensor, R.tensor);
     U.oleo.tColor.value = fuente;
     U.oleo.tDepth.value = depth;
+    U.oleo.tTensor.value = R.tensor.texture;
     pasada(M.oleo, R.a);
     let cuadro = R.a;
     if (trazo.dof && nombreNivel !== 'baja') { // el foco depende del trazo; en calidad baja se ahorra
@@ -647,7 +658,6 @@ export function createGfx(ctx) {
     U.brillo.uUmbral.value = .82 + lit * .25;
     F.uRetina.value = (1 - lit) * flashReciente * (GFX.calma ? .25 : .7); // solo después de un flash: girar no deja estela
     F.uCA.value = GFX.calma ? 0 : trazo.ca;
-    U.oleo.uTemblor.value = GFX.calma ? 0 : 2.2;
     F.uBarras.value = enVagon ? .055 : 0;
     pasada(M.final, null);
   }
