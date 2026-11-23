@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createFigura, createObjeto } from './figura.js';
+import { modelo } from './modelos.js';
 
 // Los cuatro, en el orden en que desaparecen.
 export const PASAJEROS = [
@@ -20,6 +21,12 @@ const HOLD = {
 export function createPasajeros(stage) {
   return PASAJEROS.map((p) => {
     const fig = createFigura(p.look);
+    // Modelo 3D de Andy (Quaternius) si ya cargó; si no, queda la figura de cubos.
+    const md = modelo(p.name, 1.7);
+    if (md) {
+      fig.body.children.forEach((c) => { c.visible = false; });
+      fig.body.add(md.obj);
+    }
     const objeto = createObjeto(p.objeto);
     objeto.userData.tipo = p.objeto;
     const [hx, hy, hz, ry] = HOLD[p.objeto];
@@ -28,7 +35,7 @@ export function createPasajeros(stage) {
     fig.root.add(objeto);
     fig.root.position.set(p.x, 0, p.z);
     stage.add(fig.root);
-    return { ...p, ...fig, objeto, gone: false, sway: Math.random() * 6 };
+    return { ...p, ...fig, objeto, mixer: md?.mixer ?? null, gone: false, sway: Math.random() * 6 };
   });
 }
 
@@ -38,6 +45,7 @@ const tmp = new THREE.Vector3();
 export function updatePasajeros(list, dt, camera) {
   for (const p of list) {
     if (p.gone) continue;
+    p.mixer?.update(dt);
     p.sway += dt;
     tmp.copy(camera.position);
     const yaw = Math.atan2(tmp.x - p.root.position.x, tmp.z - p.root.position.z);
