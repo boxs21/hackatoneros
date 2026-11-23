@@ -13,15 +13,17 @@
 //   ctx.audio.ambiente('anden' | 'vagon' | 'tunel' | 'casa' | 'multitud' | null)
 //   ctx.audio.silencio()                              corte total y seco
 //   ctx.audio.posicional('vendedor' | 'borrados', pos, { camera: ctx.camera })
-//   ctx.audio.musica('casa' | null)
+//   ctx.audio.musica('casa' | 'menu' | null)        'menu' suena desde public/audio/musica/
 import { receta, habla } from './synth.js';
 import { PRESETS, MEZCLA, VOZ_RADIO } from './presets.js';
 
 // Archivos presentes en public/audio/, por nombre sin extensión.
 const urls = import.meta.glob('/public/audio/**/*.{ogg,mp3,wav,m4a}', { eager: true, query: '?url', import: 'default' });
-const ARCHIVOS = new Map(
-  Object.entries(urls).map(([ruta, url]) => [ruta.split('/').pop().replace(/\.\w+$/, '').toLowerCase(), url]),
-);
+const nombreDe = (ruta) => ruta.split('/').pop().replace(/\.\w+$/, '').toLowerCase();
+const largos = ([ruta]) => ruta.includes('/musica/');
+// Lo que está en public/audio/musica/ es largo: se reproduce directo, sin cargarlo entero en memoria.
+const DIRECTO = new Map(Object.entries(urls).filter(largos).map(([ruta, url]) => [nombreDe(ruta), url]));
+const ARCHIVOS = new Map(Object.entries(urls).filter((e) => !largos(e)).map(([ruta, url]) => [nombreDe(ruta), url]));
 const buffers = new Map();
 
 let ac = null;
@@ -191,7 +193,13 @@ function cambiarBucle(grupo, nombre, opts, actual) {
   g.gain.linearRampToValueAtTime(volume, t + Math.max(fade, 0.01));
   const buf = buffers.get(nombre);
   let parar;
-  if (buf) {
+  if (DIRECTO.has(nombre)) {
+    const el = new Audio(DIRECTO.get(nombre));
+    el.loop = opts.loop ?? true;
+    ac.createMediaElementSource(el).connect(g);
+    el.play().catch((err) => console.error(`[audio] no se pudo reproducir ${nombre}`, err));
+    parar = (cuando) => setTimeout(() => el.pause(), Math.max(0, cuando - ac.currentTime) * 1000 + 30);
+  } else if (buf) {
     const s = tocarBuffer(buf, g, { loop: opts.loop ?? true });
     parar = (cuando) => s.stop(cuando);
   } else {
@@ -300,7 +308,7 @@ export const audio = {
   // La cámara que hace de oídos. Alternativa a pasar { camera } en posicional.
   oyente(camera) { oyente = camera; if (ac) seguirOyente(); },
 
-  // Música en bucle. Solo existe 'casa'. null la apaga. opts: volume, fade (s).
+  // Música en bucle: 'casa' (generada) o un archivo de public/audio/musica/. null la apaga. opts: volume, fade (s).
   musica(name, opts = {}) {
     if (!ac) return;
     if (name === musNombre && musActual) return;
