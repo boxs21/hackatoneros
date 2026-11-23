@@ -2,7 +2,7 @@
 // Corte instantáneo, sin fundido: el silencio es el arma principal.
 const CUT_AT = 0.8; // s después del frenazo
 const DARK_FOR = 4.2; // s de negro y silencio antes de "Los cinco"
-const PIENSA_AT = 1.6; // s después del corte: el jugador se da cuenta de que necesita la cámara
+const PIENSA_AT = 1.6; // s después del corte: el jugador se acuerda del celular del Oficinista
 
 let t = 0;
 let cutDone = false;
@@ -27,7 +27,7 @@ export default {
     }
     if (cutDone && !penso && t > CUT_AT + PIENSA_AT) {
       penso = true;
-      ctx.hud.subtitle('¿Qué rayos…? No veo nada. Necesito mi cámara.', 2600);
+      ctx.hud.subtitle('¿Qué rayos…? No veo nada… El celular del caballero. Tiene cámara.', 3000);
     }
     if (t > CUT_AT + DARK_FOR) ctx.go(this.next, {}, { fade: false });
   },
