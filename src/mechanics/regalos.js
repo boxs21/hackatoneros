@@ -14,7 +14,7 @@ export const REGALOS = {
     nombre: 'Celular',
     de: 'del oficinista',
     uso: '[F] flash',
-    linea: 'OFICINISTA: ¿Me tiene el celular? Tiene linterna.',
+    linea: 'OFICINISTA: Tome. Tiene cámara y flash, por si acaso.',
   },
   // Ingrediente obligatorio: el completo italiano tiene que cambiar la partida.
   // Tomate y palta de la feria: con [E] lo tiras y los borrados se van al olor.
@@ -34,7 +34,7 @@ export const REGALOS = {
   },
 };
 
-const ORDEN = ['Oficinista', 'Escolar', 'Señora', 'Vendedor'];
+const ORDEN = ['Escolar', 'Señora', 'Vendedor', 'Oficinista']; // el orden en que te los dan
 const VISIBLE = new Set(['horaPunta', 'borrados', 'vagonEscolar', 'vagonOficinista', 'vagonVendedor']);
 const TODOS = { celular: true, llavero: true, completo: true, chocolate: true };
 
