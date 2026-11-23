@@ -185,6 +185,7 @@ export default {
     }
 
     // ---- cola de diálogos: una línea a la vez, completa
+    if (ctx.input.pressed('Space') || ctx.input.pressed('Enter')) skipLine(ctx);
     runQueue(ctx);
 
     // ---- moverse (lento; más lento empujando). No se puede pasar al que habla.
@@ -296,6 +297,15 @@ export default {
 function say(ctx, text, ms = lineMs(text)) {
   if (text) ctx.hud.subtitle(text, ms); // texto vacío = silencio (pausa dramática)
   S.lineEnd = S.t + ms / 1000;
+  S.curText = text;
+}
+
+// Saltar diálogo: Espacio o Enter pasan a la siguiente línea. No se saltan las
+// pausas en silencio, "todos te miran" ni el final (S.cinematic): son el susto.
+function skipLine(ctx) {
+  if (S.t < CINE || S.cinematic || !S.curText || S.t >= S.lineEnd) return;
+  S.lineEnd = S.t - .25; // la cola sigue en este mismo cuadro
+  if (!S.queue.length) ctx.hud.subtitle('', 1); // si no viene nada, cierra el subtítulo (y su voz)
 }
 
 function runQueue(ctx) {
@@ -313,6 +323,10 @@ function runQueue(ctx) {
   if (line.delay && S.t < line.delay) return;
   S.queue.shift();
   say(ctx, line.text, line.ms);
+  if (line.speaker && !S.skipTold) {
+    S.skipTold = true;
+    ctx.hud.hint('[Espacio] saltar diálogo', 4500);
+  }
   S.speaker = line.speaker || null;
   line.onStart?.();
   if (line.onEnd) S.pendingEnd = line.onEnd;
