@@ -62,7 +62,7 @@ const RESPUESTAS = {
 // El altavoz no alcanza a terminar: a media frase se corta la voz y se va la luz.
 const FINAL = [
   'ESCOLAR: ¡Queda una pura estación pa’ Casa!',
-  'ALTAVOZ: Próxima estación… Ca… sa… —',
+  'ALTAVOZ: Próxima estación… Baque—',
 ];
 // Misión en pantalla (lista de Valentín, src/ui/misiones.js): a quién ir ahora.
 const MISION = {
@@ -74,8 +74,8 @@ const MISION = {
 // Apertura de cine: puertas que se cierran y la cámara gira hacia el pasillo.
 const CINE = 3.8; // s sin control al empezar
 // Segundos desde que empieza a sonar el altavoz hasta el frenazo. El corte seco
-// llega 1,85 s después (final de hora punta + apagón), justo sobre el "Ca—".
-const FRENAZO_TRAS_ALTAVOZ = 1.5;
+// llega 1,85 s después (final de hora punta + apagón): la voz alcanza a decir "Baque—".
+const FRENAZO_TRAS_ALTAVOZ = 1.4;
 const RECLAMOS = ['¡Permiso!', '¡Oiga, no empuje!', 'Uf…', 'Córrase pa’ dentro…', '¡Ya po!', 'Con permiso, con permiso…'];
 const MURMULLOS = ['…y llegué tarde otra vez…', '¿Alguien tiene hora?', '…mañana también, sí…', '…este tren va más lento que nunca…'];
 
