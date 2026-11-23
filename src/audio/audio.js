@@ -11,6 +11,7 @@
 //                 | 'atrapado' | 'susto' | 'celular' | 'notificacion' | 'ui' | 'latido' | 'crujido' | 'anuncio'
 //                 | 'vidrio' | 'grito' (opts.personaje: 'Escolar' | 'Oficinista' | 'Señora' | 'Vendedor'))
 //   ctx.audio.sfx('agonia', { personaje, fase: 'agarre' | 'golpe' | 'caida' })   gritos de verdad (agonia.js)
+//   ctx.audio.sfx('derrumbe' | 'flashbang')         el vagón que se desarma y el destello del final (estallido.js)
 //   ctx.audio.voz('vendedor', 'a-luca', { radio, position })   -> { duracion, fin, stop }
 //   ctx.audio.ambiente('anden' | 'vagon' | 'tunel' | 'casa' | 'multitud' | null)
 //   ctx.audio.silencio()                              corte total y seco
@@ -24,9 +25,10 @@ import { receta, habla } from './synth.js';
 import { PRESETS, MEZCLA, VOZ_RADIO } from './presets.js';
 import { crearPeligro } from './peligro.js';
 import { agonia } from './agonia.js';
+import { derrumbe, flashbang } from './estallido.js';
 
 // Recetas que viven en su propio archivo (synth.js no importa nada).
-const EXTRA = { agonia };
+const EXTRA = { agonia, derrumbe, flashbang };
 
 // Archivos presentes en public/audio/, por nombre sin extensión.
 const urls = import.meta.glob('/public/audio/**/*.{ogg,mp3,wav,m4a}', { eager: true, query: '?url', import: 'default' });
