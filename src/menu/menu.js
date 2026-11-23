@@ -1,8 +1,7 @@
 // MENÚ DE INICIO. Dueño: Andy.
 // El menú se dibuja en un lienzo de 320x240, la misma grilla de píxeles del juego,
 // encima del vagón 3D que arma states/inicio.js. El título es el letrero LED del
-// tren (matriz de 5x7 puntos): "FIN DE SERVICIO" es lo que marca un tren que ya
-// no lleva pasajeros.
+// tren (matriz de 5x7 puntos), con el nombre del juego y la línea.
 //
 //   const menu = abrirMenu(ctx, { alComenzar, alSalir });   // en enter() del estado inicio
 //   menu.cerrar();                                          // en exit()
@@ -36,6 +35,7 @@ const F = {
 };
 const ACENTO = { '́': 6, '̃': 14 }; // tilde aguda y virgulilla, dos filas sobre la letra
 
+const TITULO = 'ANDÉN CERO'; // el nombre del juego, en el letrero LED
 const OPCIONES = [['comenzar', 'COMENZAR'], ['como', 'CÓMO SE JUEGA'], ['creditos', 'CRÉDITOS'], ['escenas', 'ESCENAS']];
 // Atajos para probar: el panel ESCENAS salta directo a cualquier momento del juego.
 const ESCENAS = {
@@ -123,12 +123,15 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
     x.fillRect(TABLERO.x, TABLERO.y, TABLERO.w, 1); x.fillRect(TABLERO.x, TABLERO.y + TABLERO.h - 1, TABLERO.w, 1);
     x.fillRect(TABLERO.x, TABLERO.y, 1, TABLERO.h); x.fillRect(TABLERO.x + TABLERO.w - 1, TABLERO.y, 1, TABLERO.h);
     x.fillStyle = AMBAR_APAGADO;
-    for (let py = TABLERO.y + 6; py < TABLERO.y + 27; py += 3) for (let px = TABLERO.x + 5; px < TABLERO.x + TABLERO.w - 5; px += 3) x.fillRect(px, py, 2, 2);
+    // Matriz apagada: 10 filas (2 para la tilde y 7 de letra, más una de aire) cada 3 píxeles.
+    for (let py = TABLERO.y + 3; py < TABLERO.y + 33; py += 3) for (let px = TABLERO.x + 5; px < TABLERO.x + TABLERO.w - 5; px += 3) x.fillRect(px, py, 2, 2);
     const p = puntos.getContext('2d');
     p.shadowColor = AMBAR; p.shadowBlur = 3;
-    texto(p, 'ANDEN CERO', centro('ANDEN CERO', 3), TABLERO.y + 6, 3, AMBAR, { led: true });
+    // El título se centra y se ajusta a la grilla de la matriz para que cada punto calce.
+    const tx = TABLERO.x + 5 + 3 * Math.round((centro(TITULO, 3) - (TABLERO.x + 5)) / 3);
+    texto(p, TITULO, tx, TABLERO.y + 9, 3, AMBAR, { led: true });
     p.shadowBlur = 0;
-    texto(p, 'LÍNEA 23 · ÚLTIMO TREN', centro('LÍNEA 23 · ÚLTIMO TREN', 1), TABLERO.y + 37, 1, AMBAR, { sombra: false });
+    texto(p, 'LÍNEA 23 · ÚLTIMO TREN', centro('LÍNEA 23 · ÚLTIMO TREN', 1), TABLERO.y + 39, 1, AMBAR, { sombra: false });
   }
 
   // --- Dibujo --------------------------------------------------------------
