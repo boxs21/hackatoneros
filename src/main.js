@@ -81,9 +81,8 @@ events.on('hint', (text) => ctx.hud.hint(text));
 const SIN_PAUSA = new Set(['inicio']);
 const pausa = document.createElement('div');
 pausa.id = 'pausa';
-pausa.hidden = true;
 pausa.innerHTML = '<b>PAUSA</b><span>Haz click para seguir</span>';
-pausa.style.cssText = 'position:absolute;inset:0;z-index:30;display:grid;place-content:center;gap:10px;'
+pausa.style.cssText = 'position:absolute;inset:0;z-index:30;display:none;place-content:center;gap:10px;'
   + 'text-align:center;background:rgba(0,0,0,.72);color:#ffb800;cursor:pointer;'
   + 'font:600 clamp(18px,3vw,34px)/1.2 ui-monospace,Menlo,monospace;letter-spacing:.12em;';
 pausa.querySelector('span').style.cssText = 'font-size:.45em;color:#eef1f6;letter-spacing:.06em;';
@@ -92,7 +91,7 @@ let jugando = false; // ya capturó el mouse al menos una vez
 function setPaused(v) {
   if (ctx.paused === v) return;
   ctx.paused = v;
-  pausa.hidden = !v;
+  pausa.style.display = v ? 'grid' : 'none'; // (no usar hidden: el display del estilo le gana)
   const ac = ctx.audio.context;
   if (ac) (v ? ac.suspend() : ac.resume()).catch((err) => console.error('[pausa] audio', err));
 }
