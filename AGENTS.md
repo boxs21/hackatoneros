@@ -31,6 +31,7 @@ Textos en español de Chile. Navegador de escritorio.
   - `ctx.audio.*` (interfaz en `src/audio/audio.js`) y `ctx.hud.title / subtitle / hint`.
   - **Voces:** son murmullos sin palabras (estilo Undertale/Animal Crossing). Todo `ctx.hud.subtitle(texto)` suena solo con el tono de quien habla ("ESCOLAR: …" → escolar; sin prefijo → narrador). No llames `ctx.audio.voz` para un subtítulo (sonaría doble).
   - **Responder:** `const i = await ctx.hud.elegir(['Opción 1', 'Opción 2'])` → índice elegido (teclas 1–3; sin respuesta en 9 s elige la última). Guarda decisiones en `ctx.memoria`.
+  - **Avisos de tecla:** `src/ui/tutorial.js` muestra «[F] Saca una foto» según el momento y lo deja hasta que el jugador lo hace. Para enseñar una tecla nueva, agrega un paso ahí; no pongas subtítulos que solo nombran teclas.
   - **Misiones:** la lista de arriba a la derecha avanza sola con cada momento (`src/ui/misiones.js`). `ctx.misiones.set('texto')` cambia la misión actual; `set(null)` vuelve a la de base.
   - `ctx.events.on/emit` para hablar entre módulos sin importarlos.
 

@@ -161,7 +161,6 @@ export default {
     ctx.misiones?.set('Cruza el vagón roto saltando [Espacio]');
     S.lines = [
       [.6, 'El vagón se partió. Abajo no hay piso… solo las vías.', 3200],
-      [4.2, '[Espacio] saltar · [F] lo que alumbras queda a la vista', 4200],
     ];
   },
   update(dt, ctx) {

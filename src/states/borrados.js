@@ -104,7 +104,6 @@ export default {
     if (S.intro < 99) {
       S.intro += dt;
       if (S.intro > .6 && S.intro - dt <= .6) ctx.hud.subtitle('Se cortó la luz. Ustedes cinco siguen aquí… ¿cierto?', 3400);
-      if (S.intro > 4.2 && S.intro - dt <= 4.2 && !flash.count) ctx.hud.subtitle('[F] Flash del celular', 4000);
     }
 
     const blockers = scene.colliders.concat(passengers.filter((p) => !p.gone).map((p) => ({ x: p.x, z: p.z, r: .28 })));

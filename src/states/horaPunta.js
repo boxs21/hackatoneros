@@ -22,7 +22,6 @@ const INTRO = [
   '18:04. Sales de la pega. Solo quieres llegar a Casa.',
   'Sacas el celular para avisarle a tu mamá… Oh. Sin batería.',
   'Y en hora punta.',
-  '[W] Abrirte paso · [Mouse] Mirar',
 ];
 // Orden en que los conoces. El Oficinista va al último: le pides su celular para
 // llamar a tu mamá y, justo después, viene la catástrofe.

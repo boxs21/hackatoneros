@@ -188,7 +188,6 @@ export default {
     if (S.intro < 99) {
       S.intro += dt;
       if (S.intro > .5 && S.intro - dt <= .5) ctx.hud.subtitle('Otro vagón. Alguien rayó las paredes con tiza.', 3200);
-      if (S.intro > 4 && S.intro - dt <= 4) ctx.hud.subtitle('La tiza solo se ve con el flash. [F]', 3200);
     }
 
     walkVagon(dt, ctx, { colliders: scene.colliders });

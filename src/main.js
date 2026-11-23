@@ -8,6 +8,7 @@ import { createHelp } from './core/help.js';
 import { setupDemo, DEMO } from './core/demo.js';
 import { createHud } from './ui/hud.js';
 import { createMisiones } from './ui/misiones.js';
+import { createTutorial } from './ui/tutorial.js';
 import { audio } from './audio/audio.js';
 import { STATES } from './states/index.js';
 import { createGfx } from './gfx/gfx.js'; // rama test-graficos: modo pintura (tecla G)
@@ -39,6 +40,7 @@ const ctx = {
 };
 
 ctx.misiones = createMisiones(document.getElementById('hud'), events);
+const tutorial = createTutorial(document.getElementById('hud'), ctx); // avisos de tecla según el momento
 ctx.fsm = createStateMachine(ctx, STATES);
 
 // Cambiar de momento. Por defecto con fundido corto; { fade: false } corta seco.
@@ -141,6 +143,7 @@ function frame(now) {
   if (!ctx.paused) {
     ctx.fsm.update(dt);
     help.update(dt);
+    tutorial.update(dt);
   }
   demo.update(dt);
   gfx.render(dt); // en modo PS1 es renderer.render(scene, camera)

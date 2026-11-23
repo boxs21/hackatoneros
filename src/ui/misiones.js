@@ -6,9 +6,9 @@
 const ORDEN = [
   ['horaPunta', 'Abrirte paso hasta el fondo del vagón'],
   ['losCinco', 'Quedarte con los otros cuatro'],
-  ['borrados', 'Encontrar la salida del vagón'],
-  ['vagonEscolar', 'Descifrar el código de la puerta'],
-  ['vagonOficinista', 'Seguir hacia Casa: si algo cambió, date vuelta'],
+  ['borrados', 'Llegar a la luz roja del fondo a oscuras'],
+  ['vagonEscolar', 'Encontrar los 3 números de tiza y marcarlos en la puerta'],
+  ['vagonOficinista', 'Cruzar el vagón roto saltando entre los pedazos'],
   ['vagonVendedor', 'Seguir la voz del Vendedor'],
 ];
 const OCULTO = new Set(['inicio', 'apagon', 'final']);
