@@ -106,6 +106,28 @@ export function createBorrados({
       place(player.x, player.z);
     },
     face(player) { place(player.x, player.z); },
+    // "Detrás tuyo": uno de los de afuera aparece a tu espalda.
+    spawnBehind(player, yaw, dist = .95) {
+      const p = people.find((q) => q.kind === 'afuera');
+      if (!p) return null;
+      p.kind = 'pasillo';
+      p.x = THREE.MathUtils.clamp(player.x + Math.sin(yaw) * dist, -1.3, 1.3);
+      p.z = THREE.MathUtils.clamp(player.z + Math.cos(yaw) * dist, -12.3, 12.3);
+      place(player.x, player.z);
+      return p;
+    },
+    // Mover a uno solo, sin flash (romper la regla).
+    nudge(p, player, amount, minDist = .75) {
+      const dx = player.x - p.x;
+      const dz = player.z - p.z;
+      const d = Math.hypot(dx, dz);
+      if (d <= minDist) return false;
+      const s = Math.min(amount, d - minDist);
+      p.x += dx / d * s;
+      p.z += dz / d * s;
+      place(player.x, player.z);
+      return true;
+    },
     // Un pasajero se convierte en borrado donde estaba parado.
     convert(x, z) {
       const p = people.find((q) => q.kind === 'reserva' && q.hidden);

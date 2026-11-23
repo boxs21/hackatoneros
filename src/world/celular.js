@@ -5,6 +5,9 @@ import { pixelTexture } from './ps1.js';
 // - la pantalla muestra la cámara y el botón con la letra F
 // - al disparar, sube, la pantalla se pone blanca y queda la "foto" un momento
 // - mientras recarga, el botón se ve gris
+// - radar: cuando un borrado está cerca, la pantalla se llena de estática y el
+//   celular vibra (idea de la radio de Silent Hill / el rastreador de Alien)
+// - a veces la foto muestra a alguien pegado a ti (idea de Fatal Frame)
 // La luz del flash sale de su LED.
 const W = 32;
 const H = 64;
@@ -16,7 +19,7 @@ function pixelF(g, x, y, color) {
   g.fillRect(x, y + 2, 2, 1);
 }
 
-function drawScreen(g, { white, photo, ready, count }) {
+function drawScreen(g, { white, photo, ready, count, danger, lie, tick }) {
   if (white) {
     g.fillStyle = '#ffffff';
     g.fillRect(0, 0, W, H);
@@ -40,6 +43,16 @@ function drawScreen(g, { white, photo, ready, count }) {
       g.fillRect(x, 44 - h, 3, h);
       g.fillRect(x, 44 - h - 3, 3, 3);
     }
+    if (lie) {
+      // alguien pegado al lente: cabeza enorme, ojos negros
+      g.fillStyle = '#9a9ba0';
+      g.fillRect(12, 14, 17, 32);
+      g.fillRect(10, 20, 2, 26);
+      g.fillStyle = '#050505';
+      g.fillRect(14, 22, 4, 4);
+      g.fillRect(22, 22, 4, 4);
+      g.fillRect(17, 32, 6, 7);
+    }
     g.fillStyle = '#e4322b';
     g.fillRect(4, 9, 2, 2);
   } else {
@@ -50,6 +63,20 @@ function drawScreen(g, { white, photo, ready, count }) {
       g.fillRect(x + (x > 10 ? 2 : 0), y + (y > 20 ? -2 : 0), 1, 3);
     }
     g.fillRect(15, 25, 2, 2);
+  }
+  // estática del radar
+  if (danger > .03) {
+    let seed = tick * 977 + 13;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const n = Math.floor(danger * 420);
+    for (let i = 0; i < n; i++) {
+      const v = rnd();
+      g.fillStyle = v > .5 ? '#d8d8d8' : '#3a3a3a';
+      g.fillRect(3 + Math.floor(rnd() * 26), 8 + Math.floor(rnd() * 38), 1 + Math.floor(rnd() * 2), 1);
+    }
+    // barras de "señal" en rojo
+    g.fillStyle = '#e4322b';
+    for (let i = 0; i < Math.ceil(danger * 4); i++) g.fillRect(12 + i * 2, 4 - Math.min(2, i), 1, 1 + Math.min(2, i));
   }
   // botón de disparo con la F
   g.fillStyle = ready ? '#ffffff' : '#4a4f58';
@@ -96,15 +123,21 @@ export function createCelular() {
   const led = new THREE.Vector3();
   let key = '';
   let shown = 0; // 0 = abajo, 1 = arriba
+  let time = 0;
 
   return {
     group,
     led, // posición mundial del LED (para la luz)
-    update(cam, dt, { since = 9, ready = true, count = 0 } = {}) {
+    update(cam, dt, { since = 9, ready = true, count = 0, danger = 0, lie = false } = {}) {
+      time += dt;
       const target = since < .45 ? 1 : 0;
       shown += (target - shown) * Math.min(1, dt * (target ? 22 : 6));
       off.lerpVectors(offLow, offHigh, shown);
       cam.updateMatrixWorld();
+      // vibración: golpecitos rápidos, más fuertes mientras más cerca
+      const buzz = danger > .03 && Math.sin(time * (8 + danger * 10)) > .2 ? danger : 0;
+      off.x += (Math.random() - .5) * .006 * buzz;
+      off.y += (Math.random() - .5) * .006 * buzz;
       group.position.copy(off).applyMatrix4(cam.matrixWorld);
       euler.set(.18 - shown * .12, -.32 + shown * .22, -.06);
       tilt.setFromEuler(euler);
@@ -113,8 +146,9 @@ export function createCelular() {
       group.updateMatrixWorld();
       led.set(.02, .06, -.01).applyMatrix4(group.matrixWorld);
 
-      const state = { white: since < .13, photo: since >= .13 && since < 1.8, ready, count };
-      const k = `${state.white}|${state.photo}|${ready}|${Math.floor(count / 3)}`;
+      const tick = Math.floor(time * 16);
+      const state = { white: since < .13, photo: since >= .13 && since < 1.8, ready, count, danger, lie, tick };
+      const k = `${state.white}|${state.photo}|${ready}|${Math.floor(count / 3)}|${lie}|${danger > .03 ? tick : 0}`;
       if (k !== key) {
         key = k;
         drawScreen(g, state);

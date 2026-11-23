@@ -5,15 +5,16 @@ import { createCelular } from './celular.js';
 
 // Arma el vagón a oscuras dentro de ctx.stage: luces de emergencia, niebla,
 // la luz del flash (sale del celular) y la capa de pantalla.
-export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, tubeFlicker = false } = {}) {
+// lit = true: hora punta, luces encendidas y el tren andando (luces del túnel pasan).
+export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, tubeFlicker = false, lit = false } = {}) {
   const { camera, stage, scene } = ctx;
   camera.rotation.order = 'YXZ';
   camera.position.set(0, 1.55, z);
   camera.rotation.set(0, yaw, 0);
   scene.background = new THREE.Color(0x000000);
-  scene.fog = new THREE.Fog(0x000000, 1.2, fogFar);
+  scene.fog = lit ? new THREE.Fog(0x0d0e10, 8, 40) : new THREE.Fog(0x000000, 1.2, fogFar);
 
-  const vagon = createVagon({ tubeFlicker });
+  const vagon = createVagon({ tubeFlicker, lit });
   const hemi = new THREE.HemisphereLight(0x8aa0c8, 0x2a2018, ambient);
   // rojo tenue en las puertas de los extremos: la única referencia en la oscuridad
   const exitLight = new THREE.PointLight(0xff3020, 1.6, 7, 1);
@@ -32,6 +33,28 @@ export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, t
   const celular = createCelular();
   stage.add(celular.group, vagon.group, hemi, exitLight, backLight, spot, fill, flickLight, overlay.mesh);
 
+  // tren andando: luces del túnel que pasan por las ventanas, techo encendido
+  const tunnelLights = [];
+  if (lit) {
+    hemi.color.setHex(0xf2f4ff);
+    hemi.groundColor.setHex(0x6a6054);
+    exitLight.intensity = backLight.intensity = 0;
+    for (const z of [-8, 0, 8]) {
+      const l = new THREE.PointLight(0xeef4ff, 2.2, 10, 1);
+      l.position.set(0, 2.8, z);
+      stage.add(l);
+    }
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffe2a0 });
+    const geo = new THREE.BoxGeometry(.1, .12, .9);
+    for (let i = 0; i < 12; i++) {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(i % 2 ? 4.25 : -4.25, 2.1, -15 + i * 2.6);
+      tunnelLights.push(m);
+      stage.add(m);
+    }
+    overlay.u.uVig.value = .45;
+  }
+
   // Click en el canvas: capturar el mouse y desbloquear el audio (modo demo salta el inicio).
   const onDown = () => {
     ctx.input.lockPointer();
@@ -45,20 +68,34 @@ export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, t
     vagon,
     overlay,
     colliders: vagon.colliders,
+    danger: 0, // 0..1, lo pone el estado (radar del celular)
+    lie: false, // la última foto muestra a alguien pegado a ti
+    lurch: 0, // sacudón del tren (hora punta)
     // luz del flash: 0..1 (lo calcula mechanics/flash.js). flash = el de mechanics/flash.js
     light(level, dt, flash) {
       if (ctx.demo && window.__fdsHold) level = 1; // depurar: flash fijo (solo ?demo=1)
       time += dt;
       const now = performance.now();
-      celular.update(camera, dt, flash ? { since: flash.since(now), ready: flash.ready, count: flash.count } : {});
+      celular.update(camera, dt, flash
+        ? { since: flash.since(now), ready: flash.ready, count: flash.count, danger: this.danger, lie: this.lie }
+        : { danger: this.danger });
       camera.getWorldDirection(fwd);
       spot.position.copy(celular.led);
       spot.target.position.copy(camera.position).addScaledVector(fwd, 5);
       fill.position.copy(camera.position);
-      spot.intensity = level * 9;
-      fill.intensity = level * 1.5;
+      spot.intensity = level * 7.5;
+      fill.intensity = level * .5;
       flickLight.intensity = vagon.update(dt) * 2.2;
       overlay.u.uTime.value = time;
+      if (lit) {
+        for (const m of tunnelLights) {
+          m.position.z += dt * 24;
+          if (m.position.z > 16) m.position.z -= 31.2;
+        }
+        // vaivén del tren
+        camera.rotation.z = Math.sin(time * 1.3) * .006 + Math.sin(time * 3.7) * .002 + this.lurch * .03;
+        this.lurch *= Math.max(0, 1 - dt * 3);
+      }
     },
     dispose() {
       ctx.canvas.removeEventListener('mousedown', onDown);

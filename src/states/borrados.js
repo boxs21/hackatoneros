@@ -35,7 +35,7 @@ export default {
     crowd.face(ctx.camera.position);
 
     S = { scene, passengers, crowd, scare, retry, vanished: 0, t: 0, bestZ: 11,
-      caught: -1, done: false, doorMsg: -9, intro: retry ? 99 : 0 };
+      caught: -1, done: false, doorMsg: -9, intro: retry ? 99 : 0, lastLie: -99, rule: null };
 
     if (retry) {
       // punto de control: los cuatro ya desaparecieron
@@ -51,6 +51,15 @@ export default {
         ctx.audio.sfx('flash');
         // El primer flash es gratis; después, cada uno los acerca.
         crowd.step(pos, count === 1 && !retry ? 0 : .25);
+        // La foto miente (Fatal Frame): en la 3.ª foto, y después de vez en cuando,
+        // sale alguien pegado a ti… y de verdad quedó uno a tu espalda.
+        const lie = (count === 3 && !retry) || (count > 4 && Math.random() < .2 && S.t - S.lastLie > 10);
+        scene.lie = lie;
+        if (lie) {
+          S.lastLie = S.t;
+          crowd.spawnBehind(pos, ctx.camera.rotation.y);
+          ctx.audio.sfx('respiracion', { detras: true });
+        }
         if (S.vanished < passengers.length) {
           const p = passengers[S.vanished];
           desaparecer(ctx.stage, p);
@@ -99,13 +108,13 @@ export default {
     if (!S.done && ctx.input.pressed('KeyF')) flash.fire(now);
     const level = ctx.demo && window.__fdsHold ? 1 : flash.level(now);
     const glow = flash.glow(now);
+    // proximidad: rojo, latido y estática en el celular aunque no los veas
+    const d = crowd.nearest(cam.position);
+    const danger = THREE.MathUtils.clamp((1.6 - d) / 1.1, 0, 1);
+    scene.danger = danger;
     scene.light(level, dt, flash);
     crowd.show(level, glow);
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .75;
-
-    // proximidad: rojo y latido aunque no los veas
-    const d = crowd.nearest(cam.position);
-    const danger = THREE.MathUtils.clamp((1.35 - d) / .9, 0, 1);
     scene.overlay.u.uDanger.value += (danger - scene.overlay.u.uDanger.value) * Math.min(1, dt * 8);
     if (danger > .3 && Math.floor(S.t * 1.6) !== Math.floor((S.t - dt) * 1.6)) ctx.audio.sfx('latido', { volumen: danger });
     if (d < CATCH_RADIUS) {
@@ -119,6 +128,22 @@ export default {
     if (cam.position.z < S.bestZ - 2) {
       S.bestZ = cam.position.z;
       ctx.progress();
+    }
+
+    // Romper la regla (SCP-173), una sola vez: en el último tramo, uno se mueve
+    // sin flash. Solo lo delatan los pasos, el rojo y la estática del celular.
+    if (!S.rule && cam.position.z < -4.5) {
+      const ahead = crowd.people
+        .filter((p) => !p.hidden && p.kind === 'pasillo' && p.z < cam.position.z)
+        .map((p) => [p, Math.hypot(p.x - cam.position.x, p.z - cam.position.z)])
+        .filter(([, dist]) => dist < 5 && dist > 1.4)
+        .sort((a, b) => a[1] - b[1])[0];
+      S.rule = { p: ahead?.[0], left: ahead ? .9 : 0 };
+      if (ahead) ctx.audio.sfx('pasos', { cerca: true });
+    }
+    if (S.rule?.left > 0) {
+      const step = dt * .75;
+      S.rule.left = crowd.nudge(S.rule.p, cam.position, step) ? S.rule.left - step : 0;
     }
 
     // la puerta del fondo

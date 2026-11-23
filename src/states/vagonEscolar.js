@@ -119,7 +119,7 @@ export default {
     S = { scene, crowd, scare, code, retry, decals, seen, pick, entered: '', t: 0, caught: -1, done: false,
       bestZ: 11.2, click: false, onDown, pad: { canvas, tex, panel, glow, hover: -1, state: '', stateT: 0 },
       ray: new THREE.Raycaster(), center: new THREE.Vector2(0, 0), frustum: new THREE.Frustum(), m: new THREE.Matrix4(),
-      intro: retry ? 99 : 0 };
+      intro: retry ? 99 : 0, lastLie: -99 };
     drawKeypad(S);
     if (retry) ctx.hud.subtitle(`Cuaderno: ${notebook(S)}`, 3000);
 
@@ -128,6 +128,13 @@ export default {
         ctx.audio.sfx('flash');
         crowd.step(ctx.camera.position, count === 1 ? 0 : .28);
         S.checkSeen = true;
+        const lie = count === 4 || (count > 6 && Math.random() < .2 && S.t - S.lastLie > 10);
+        scene.lie = lie;
+        if (lie) {
+          S.lastLie = S.t;
+          crowd.spawnBehind(ctx.camera.position, ctx.camera.rotation.y);
+          ctx.audio.sfx('respiracion', { detras: true });
+        }
       },
     });
   },
@@ -165,6 +172,8 @@ export default {
     if (!S.done && ctx.input.pressed('KeyF')) flash.fire(now);
     const level = ctx.demo && window.__fdsHold ? 1 : flash.level(now);
     const glow = flash.glow(now);
+    const near = crowd.nearest(cam.position);
+    scene.danger = THREE.MathUtils.clamp((1.6 - near) / 1.1, 0, 1);
     scene.light(level, dt, flash);
     crowd.show(level, glow);
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .75;
@@ -194,7 +203,7 @@ export default {
 
     // borrados
     const d = crowd.nearest(cam.position);
-    const danger = THREE.MathUtils.clamp((1.35 - d) / .9, 0, 1);
+    const danger = THREE.MathUtils.clamp((1.35 - d) / .9, 0, 1); // viñeta roja: más cerca que el radar
     scene.overlay.u.uDanger.value += (danger - scene.overlay.u.uDanger.value) * Math.min(1, dt * 8);
     if (danger > .3 && Math.floor(S.t * 1.6) !== Math.floor((S.t - dt) * 1.6)) ctx.audio.sfx('latido', { volumen: danger });
     if (d < CATCH_RADIUS) {

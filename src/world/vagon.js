@@ -15,7 +15,7 @@ export const VAGON = {
 
 const SEGMENTS = [[-12.9, -8.75], [-7.25, -0.75], [0.75, 7.25], [8.75, 12.9]];
 
-export function createVagon({ tubeFlicker = false } = {}) {
+export function createVagon({ tubeFlicker = false, lit = false } = {}) {
   const vagon = new THREE.Group();
   const colliders = []; // { x, z, r }
 
@@ -35,7 +35,7 @@ export function createVagon({ tubeFlicker = false } = {}) {
     puerta: lambert({ map: textura('puerta') }),
     aviso: lambert({ map: textura('aviso') }),
     mapa: lambert({ map: textura('mapa') }),
-    tubo: lambert({ color: 0x3a3a36, emissive: 0x000000 }),
+    tubo: lit ? basic({ color: 0xeef4ff }) : lambert({ color: 0x3a3a36, emissive: 0x000000 }),
     emergencia: basic({ color: 0x3df08a }),
     rojo: basic({ color: 0xff2a22 }),
   };
