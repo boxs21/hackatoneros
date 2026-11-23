@@ -17,11 +17,21 @@ import './gfx.css';
 const PS1 = { w: 320, h: 240 };
 const ASPECT = 16 / 9;
 const NIVELES = {
-  baja: { tope: 960, msaa: 0, radio: 1.8, dof: 0, ao: 0, sombra: 512 },
-  media: { tope: 1280, msaa: 0, radio: 2.3, dof: 1, ao: 0, sombra: 1024 },
-  alta: { tope: 1600, msaa: 4, radio: 2.8, dof: 1, ao: 1, sombra: 2048 },
+  baja: { tope: 960, msaa: 0, radio: 1.8, dof: 0, ao: 0, ssr: 0, sombra: 512 },
+  media: { tope: 1280, msaa: 0, radio: 2.3, dof: 1, ao: 0, ssr: 1, sombra: 1024 },
+  alta: { tope: 1600, msaa: 4, radio: 2.8, dof: 1, ao: 1, ssr: 1, sombra: 2048 },
 };
 const ORDEN = ['baja', 'media', 'alta'];
+
+// Un color dominante por momento (como los cuadros de una misma serie).
+// niebla: color del aire · ambO/ambL: cuánto brilla a oscuras / con luz
+// flash: cuánto la enciende el flash · dens: espesor · lavado: cuánto tiñe todo
+const PALETAS = {
+  base: { niebla: [.05, .14, .7], ambO: .012, ambL: .3, flash: .5, dens: .15, lavado: .3 }, // ultramar + el carmín de la salida
+  horaPunta: { niebla: [1, .55, .22], ambO: .03, ambL: .75, flash: .3, dens: .11, lavado: .3 }, // ámbar de tarde
+  vagonEscolar: { niebla: [0, .6, .68], ambO: .015, ambL: .3, flash: .5, dens: .15, lavado: .34 }, // turquesa
+  vagonOficinista: { niebla: [.46, .14, .75], ambO: .015, ambL: .3, flash: .5, dens: .14, lavado: .34 }, // violeta
+};
 
 export function createGfx(ctx) {
   const { renderer, scene, camera, canvas } = ctx;
@@ -43,18 +53,19 @@ export function createGfx(ctx) {
   }
 
   const cam = { uNear: { value: .05 }, uFar: { value: 200 } };
+  const U_NIEBLA = { value: new THREE.Vector3(.05, .14, .7) };
   const texel = () => ({ value: new THREE.Vector2() });
   const U = {
-    oleo: { ...cam, tColor: { value: null }, tDepth: { value: null }, uTexel: texel(), uRadio: { value: 3 }, uTemblor: { value: 2.2 }, uAspect: { value: ASPECT } },
-    ao: { ...cam, tColor: { value: null }, tDepth: { value: null }, tFoco: { value: null }, uTexel: texel(), uTan: { value: new THREE.Vector2() }, uAo: { value: .8 }, uDof: { value: 0 }, uMaxBlur: { value: 0 }, uApertura: { value: 0 } },
-    dof: { ...cam, tColor: { value: null }, tDepth: { value: null }, tFoco: { value: null }, uTexel: texel(), uTan: { value: new THREE.Vector2() }, uAo: { value: 0 }, uDof: { value: 1 }, uMaxBlur: { value: 5 }, uApertura: { value: .6 } },
+    oleo: { ...cam, tColor: { value: null }, tDepth: { value: null }, uTexel: texel(), uRadio: { value: 3 }, uTemblor: { value: 2.2 }, uAspect: { value: ASPECT }, uNiebla: U_NIEBLA, uNieblaAmb: { value: 0 }, uNieblaFlash: { value: .5 }, uDens: { value: .15 }, uBruma: { value: 0 } },
+    ao: { ...cam, tColor: { value: null }, tDepth: { value: null }, tFoco: { value: null }, uTexel: texel(), uTan: { value: new THREE.Vector2() }, uAo: { value: .8 }, uDof: { value: 0 }, uMaxBlur: { value: 0 }, uApertura: { value: 0 }, uSsr: { value: 0 }, uCamY: { value: 1.55 }, uUp: { value: new THREE.Vector3(0, 1, 0) } },
+    dof: { ...cam, tColor: { value: null }, tDepth: { value: null }, tFoco: { value: null }, uTexel: texel(), uTan: { value: new THREE.Vector2() }, uAo: { value: 0 }, uDof: { value: 1 }, uMaxBlur: { value: 5 }, uApertura: { value: .6 }, uSsr: { value: 0 }, uCamY: { value: 1.55 }, uUp: { value: new THREE.Vector3(0, 1, 0) } },
     foco: { ...cam, tDepth: { value: null }, tPrev: { value: null }, uK: { value: .1 } },
     brillo: { ...cam, tColor: { value: null }, uTexel: texel(), uUmbral: { value: .82 }, uRodilla: { value: .35 } },
     bajar: { tColor: { value: null }, uTexel: texel() },
     subir: { tColor: { value: null }, uTexel: texel(), uPeso: { value: 1 } },
     rayos: { ...cam, tBrillo: { value: null }, tDepth: { value: null }, uAspect: { value: ASPECT }, uLuz: { value: [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()] }, uColor: { value: [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()] } },
     retina: { tColor: { value: null }, tPrev: { value: null }, uDecae: { value: .9 } },
-    final: { ...cam, tColor: { value: null }, tBloom: { value: null }, tRayos: { value: null }, tRetina: { value: null }, tDepth: { value: null }, uTime: { value: 0 }, uAspect: { value: ASPECT }, uBloom: { value: .5 }, uRayos: { value: .8 }, uRetina: { value: 0 }, uBruma: { value: 0 }, uExpo: { value: 1.25 }, uCA: { value: .012 }, uVirado: { value: .8 }, uLit: { value: 0 }, uBarras: { value: 0 }, uTela: { value: 1 } },
+    final: { ...cam, tColor: { value: null }, tBloom: { value: null }, tRayos: { value: null }, tRetina: { value: null }, tDepth: { value: null }, uTime: { value: 0 }, uAspect: { value: ASPECT }, uBloom: { value: .5 }, uRayos: { value: .8 }, uRetina: { value: 0 }, uLavado: { value: .3 }, uRaya: { value: .2 }, uNiebla: U_NIEBLA, uExpo: { value: 1.25 }, uCA: { value: .012 }, uVirado: { value: .8 }, uLit: { value: 0 }, uBarras: { value: 0 }, uTela: { value: 1 } },
   };
   const M = {
     oleo: mat(SH.OLEO, U.oleo),
@@ -248,6 +259,8 @@ export function createGfx(ctx) {
     nombreNivel = nombre;
     nivel = NIVELES[nombre];
     U.oleo.uRadio.value = nivel.radio;
+    U.ao.uAo.value = nivel.ao * .8;
+    U.ao.uSsr.value = nivel.ssr * .9;
     if (flashSpot && flashSpot.shadow.mapSize.x !== nivel.sombra) {
       flashSpot.shadow.mapSize.setScalar(nivel.sombra);
       flashSpot.shadow.map?.dispose();
@@ -329,6 +342,7 @@ export function createGfx(ctx) {
   let focoI = 0;
   let retinaI = 0;
   const fwd = new THREE.Vector3();
+  const giro = new THREE.Euler();
 
   function elegirLuces() {
     const L = U.rayos.uLuz.value;
@@ -402,6 +416,16 @@ export function createGfx(ctx) {
     cam.uNear.value = camera.near;
     cam.uFar.value = camera.far;
 
+    // pulso: la cámara respira apenas, como sostenida a mano (solo al dibujar;
+    // después se deja como estaba para no tocar la lógica de los estados)
+    giro.copy(camera.rotation);
+    if (enVagon && !GFX.calma) {
+      camera.rotation.x += Math.sin(tiempo * .9) * .0035 + Math.sin(tiempo * 2.3) * .0012;
+      camera.rotation.y += Math.sin(tiempo * .6 + 1.3) * .003;
+      camera.rotation.z += Math.sin(tiempo * .75 + .4) * .0025;
+      camera.updateMatrixWorld();
+    }
+
     // 1 · la escena (sin celular ni capa de pantalla)
     camera.layers.set(0);
     renderer.setRenderTarget(R.escena);
@@ -418,7 +442,9 @@ export function createGfx(ctx) {
 
     // 2 · sombra en los rincones (antes del óleo, que le alisa el ruido), óleo y foco
     let fuente = R.escena.texture;
-    if (nivel.ao) {
+    if (nivel.ao || nivel.ssr) {
+      U.ao.uUp.value.set(0, 1, 0).transformDirection(camera.matrixWorldInverse);
+      U.ao.uCamY.value = camera.position.y;
       U.ao.tColor.value = fuente;
       U.ao.tDepth.value = depth;
       U.ao.tFoco.value = R.foco[focoI].texture;
@@ -447,6 +473,8 @@ export function createGfx(ctx) {
     renderer.autoClear = true;
     scene.background = fondo;
     camera.layers.set(0);
+    camera.rotation.copy(giro);
+    camera.updateMatrixWorld();
 
     // 4 · bloom
     U.brillo.tColor.value = cuadro.texture;
@@ -488,10 +516,19 @@ export function createGfx(ctx) {
     F.tDepth.value = depth;
     F.uTime.value = tiempo;
     F.uLit.value = lit;
-    F.uBruma.value = flash;
+    // paleta del momento, con paso suave entre una y otra
+    const pal = PALETAS[ctx.fsm.current] || PALETAS.base;
+    const k = Math.min(1, dt * 2.5);
+    const O = U.oleo;
+    U_NIEBLA.value.lerp(v3.set(pal.niebla[0], pal.niebla[1], pal.niebla[2]), k);
+    O.uNieblaAmb.value += ((enVagon ? pal.ambO + (pal.ambL - pal.ambO) * lit : 0) - O.uNieblaAmb.value) * k;
+    O.uNieblaFlash.value = pal.flash;
+    O.uBruma.value = flash;
+    O.uDens.value += (pal.dens - O.uDens.value) * k;
+    F.uLavado.value += ((enVagon ? pal.lavado : 0) - F.uLavado.value) * k;
     F.uBloom.value = .42 - lit * .2;
-    F.uRayos.value = enVagon ? .9 - lit * .6 : 0;
-    F.uExpo.value = 1.25 - lit * .3 - Math.min(flash, 1) * .5; // la cámara cierra el diafragma con el flash
+    F.uRayos.value = enVagon ? .38 + lit * .22 + Math.min(flash, 1) * .4 : 0;
+    F.uExpo.value = 1.25 - lit * .15 - Math.min(flash, 1) * .5; // la cámara cierra el diafragma con el flash
     F.uVirado.value = .8 + lit * .3;
     U.brillo.uUmbral.value = .82 + lit * .25;
     F.uRetina.value = (1 - lit) * (GFX.calma ? .25 : .7);

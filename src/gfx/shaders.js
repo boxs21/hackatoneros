@@ -27,6 +27,8 @@ ${COMUN}
 uniform sampler2D tColor, tDepth;
 uniform vec2 uTexel;
 uniform float uRadio, uTemblor, uAspect;
+uniform vec3 uNiebla;
+uniform float uNieblaAmb, uNieblaFlash, uDens, uBruma;
 vec3 comp(vec3 c) { return c / (1.0 + max3(c)); }
 void main() {
   float z = linZ(texture2D(tDepth, vUv).x);
@@ -55,6 +57,13 @@ void main() {
   float w3 = 1.0 / (1.0 + pow(4000.0 * (v3.r + v3.g + v3.b), 3.0));
   vec3 r = (m0 * w0 + m1 * w1 + m2 * w2 + m3 * w3) / (w0 + w1 + w2 + w3);
   r = r / max(1.0 - max3(r), 0.02);
+  // bruma de color: el aire del vagón tiene un tono por momento. Lo cercano
+  // queda en silueta contra el fondo; el haz del flash la enciende.
+  float f = 1.0 - exp(-z * uDens);
+  vec3 tinte = uNiebla / max(max3(uNiebla), 0.001);
+  float cono = smoothstep(0.62, 0.0, length((vUv - 0.5) * vec2(uAspect, 1.0)));
+  vec3 haz = mix(vec3(1.0, 0.94, 0.82), tinte, 0.5) * uBruma * cono * uNieblaFlash;
+  r = r * (1.0 - f * 0.4 * min(1.0, uNieblaAmb * 3.0)) + (uNiebla * uNieblaAmb + haz) * f;
   gl_FragColor = vec4(r, 1.0);
 }`;
 
@@ -64,7 +73,8 @@ export const LENTE = /* glsl */ `
 ${COMUN}
 uniform sampler2D tColor, tDepth, tFoco;
 uniform vec2 uTexel, uTan;
-uniform float uAo, uDof, uMaxBlur, uApertura;
+uniform float uAo, uDof, uMaxBlur, uApertura, uSsr, uCamY;
+uniform vec3 uUp; // "arriba" del mundo visto desde la cámara
 vec3 viewPos(vec2 uv) {
   float z = linZ(texture2D(tDepth, uv).x);
   return vec3((uv * 2.0 - 1.0) * uTan * z, -z);
@@ -100,8 +110,35 @@ void main() {
     }
   }
 
+  vec3 N = normalize(cross(dFdx(P), dFdy(P)));
+
+  // piso mojado: el suelo refleja lo que tiene encima (tubos, la luz roja, los
+  // borrados encendidos por el flash). Se camina el rayo reflejado por la pantalla.
+  if (uSsr > 0.0 && z < 30.0 && dot(N, uUp) > 0.9 && uCamY + dot(P, uUp) < 0.1) {
+    vec3 V = normalize(P);
+    vec3 Rf = reflect(V, uUp);
+    vec3 q = P + uUp * 0.03;
+    float paso = 0.12;
+    vec2 hit = vec2(-1.0);
+    for (int i = 0; i < 26; i++) {
+      q += Rf * paso;
+      paso *= 1.13;
+      if (q.z > -0.05) break;
+      vec2 uv = (q.xy / (-q.z) / uTan) * 0.5 + 0.5;
+      if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) break;
+      float dz = -q.z - linZ(texture2D(tDepth, uv).x);
+      if (dz > 0.0 && dz < 0.5 + paso * 1.5) { hit = uv; break; }
+    }
+    if (hit.x >= 0.0) {
+      float fr = 0.07 + 0.75 * pow(1.0 - max(dot(-V, uUp), 0.0), 3.0);
+      vec2 e = smoothstep(0.0, 0.08, hit) * smoothstep(0.0, 0.08, 1.0 - hit);
+      // charcos: no todo el piso brilla igual
+      float charco = 0.45 + 0.55 * smoothstep(0.35, 0.7, vnoise((P.xy / max(z, 0.1) + vec2(uCamY)) * 3.0 + P.z * 0.7));
+      col += texture2D(tColor, hit).rgb * fr * e.x * e.y * uSsr * charco;
+    }
+  }
+
   if (uAo > 0.0 && z < 40.0) {
-    vec3 N = normalize(cross(dFdx(P), dFdy(P)));
     float occ = 0.0;
     for (int i = 0; i < 8; i++) {
       float fi = float(i) + 0.5;
@@ -227,7 +264,8 @@ void main() {
 export const FINAL = /* glsl */ `
 ${COMUN}
 uniform sampler2D tColor, tBloom, tRayos, tRetina, tDepth;
-uniform float uTime, uAspect, uBloom, uRayos, uRetina, uBruma, uExpo, uCA, uVirado, uLit, uBarras, uTela;
+uniform float uTime, uAspect, uBloom, uRayos, uRetina, uExpo, uCA, uVirado, uLit, uBarras, uTela, uLavado, uRaya;
+uniform vec3 uNiebla;
 vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
 vec3 srgb(vec3 c) { return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }
 void main() {
@@ -238,14 +276,16 @@ void main() {
   col.g = texture2D(tColor, vUv).g;
   col.b = texture2D(tColor, vUv - d * r2 * uCA).b;
 
-  // el haz del flash atraviesa el polvo: más bruma mientras más lejos mira
-  float z = linZ(texture2D(tDepth, vUv).x);
-  float cono = smoothstep(0.62, 0.0, length(d * vec2(uAspect, 1.0)));
-  col += vec3(1.0, 0.94, 0.82) * uBruma * (1.0 - exp(-z * 0.16)) * cono * 0.22;
-
   vec3 bloom = texture2D(tBloom, vUv).rgb;
   col += bloom * uBloom;
   col += texture2D(tRayos, vUv).rgb * uRayos;
+  // destello de lente anamórfico: las luces fuertes se estiran en una raya fría
+  vec3 raya = vec3(0.0);
+  for (int i = 1; i <= 6; i++) {
+    float o = float(i) * 0.02;
+    raya += (texture2D(tBloom, vUv + vec2(o, 0.0)).rgb + texture2D(tBloom, vUv - vec2(o, 0.0)).rgb) * (1.0 - float(i) / 7.0);
+  }
+  col += raya / 6.0 * vec3(0.45, 0.7, 1.0) * uRaya;
   vec3 ret = texture2D(tRetina, vUv).rgb;
   col += max(ret - col * 1.4, 0.0) * uRetina * vec3(0.72, 0.86, 1.0);
 
@@ -257,7 +297,11 @@ void main() {
   vec3 oro = col * vec3(1.12, 1.01, 0.80);
   col = mix(col, fria, (1.0 - smoothstep(0.0, 0.45, l)) * uVirado);
   col = mix(col, oro, smoothstep(0.4, 0.95, l) * uVirado);
-  col = mix(vec3(l), col, 1.12);
+  // lavado: todo el cuadro tira hacia el color del momento, menos las luces altas
+  vec3 tinte = uNiebla / max(max3(uNiebla), 0.001);
+  col = mix(col, l * mix(vec3(1.0), tinte, 0.85) * 1.5, uLavado * (1.0 - smoothstep(0.55, 1.0, l)));
+  l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+  col = mix(vec3(l), col, 1.3);
   col = mix(col, col * col * (3.0 - 2.0 * col), 0.22);
 
   // tela: la trama del lienzo se nota en los tonos medios
