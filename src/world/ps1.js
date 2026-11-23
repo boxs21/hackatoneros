@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { GFX } from '../gfx/config.js';
+import { pintura, luz } from '../gfx/materiales.js';
 
 // Look PS1: vértices que "saltan" a la grilla de 320x240, colores con pocos
 // niveles y tramado (dithering) ordenado. Todo material del vagón pasa por aquí.
@@ -36,8 +38,9 @@ export function ps1(material) {
   return material;
 }
 
-export const lambert = (opts) => ps1(new THREE.MeshLambertMaterial(opts));
-export const basic = (opts) => ps1(new THREE.MeshBasicMaterial(opts));
+// rama test-graficos: en modo pintura los materiales los entrega src/gfx/materiales.js
+export const lambert = (opts) => (GFX.on ? pintura(opts) : ps1(new THREE.MeshLambertMaterial(opts)));
+export const basic = (opts) => (GFX.on ? luz(opts) : ps1(new THREE.MeshBasicMaterial(opts)));
 
 // Texturas chicas, sin suavizado, como en la consola.
 export function pixelTexture(canvas, rx = 1, ry = 1) {
@@ -46,6 +49,11 @@ export function pixelTexture(canvas, rx = 1, ry = 1) {
   map.magFilter = THREE.NearestFilter;
   map.minFilter = THREE.NearestFilter;
   map.generateMipmaps = false;
+  if (GFX.on) { // píxeles nítidos de cerca, sin chispeo de lejos
+    map.minFilter = THREE.LinearMipmapLinearFilter;
+    map.generateMipmaps = true;
+    map.anisotropy = 4;
+  }
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(rx, ry);
   return map;

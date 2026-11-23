@@ -10,6 +10,7 @@ import { createHud } from './ui/hud.js';
 import { createMisiones } from './ui/misiones.js';
 import { audio } from './audio/audio.js';
 import { STATES } from './states/index.js';
+import { createGfx } from './gfx/gfx.js'; // rama test-graficos: modo pintura (tecla G)
 
 // Resolución interna estilo PS1; el CSS la escala con píxeles duros.
 export const RES = { w: 320, h: 240 };
@@ -76,6 +77,7 @@ events.on('state:enter', () => {
 });
 events.on('hint', (text) => ctx.hud.hint(text));
 
+const gfx = createGfx(ctx);
 const help = createHelp(ctx);
 const demo = setupDemo(ctx);
 if (DEMO) window.ctx = ctx; // para depurar en la consola
@@ -87,7 +89,7 @@ function frame(now) {
   ctx.fsm.update(dt);
   help.update(dt);
   demo.update(dt);
-  renderer.render(scene, camera);
+  gfx.render(dt); // en modo PS1 es renderer.render(scene, camera)
   ctx.input.endFrame();
   requestAnimationFrame(frame);
 }
