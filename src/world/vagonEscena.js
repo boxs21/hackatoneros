@@ -67,6 +67,7 @@ export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, t
   return {
     vagon,
     overlay,
+    celular, // para esconderlo mientras todavía no te lo dan (hora punta)
     colliders: vagon.colliders,
     danger: 0, // 0..1, lo pone el estado (radar del celular)
     lie: false, // la última foto muestra a alguien pegado a ti

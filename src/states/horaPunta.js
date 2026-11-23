@@ -12,6 +12,7 @@
 // - Al final: altavoz con interferencia, parpadeo de luces, frenazo y apagón.
 import { createFlash } from '../mechanics/flash.js';
 import { createMultitud } from '../mechanics/multitud.js';
+import { REGALOS, dar, mostrarRegalos, tiene } from '../mechanics/regalos.js';
 import { createPasajeros, updatePasajeros } from '../world/pasajeros.js';
 import { setupVagon, walkVagon } from '../world/vagonEscena.js';
 
@@ -109,6 +110,9 @@ export default {
         if (!S.queue.length && S.t >= S.lineEnd) say(ctx, '¡Oiga, sin flash!', 1600);
       },
     });
+    // Partes sin nada: el celular (y lo demás) te lo van pasando los cuatro.
+    mostrarRegalos(ctx, { reiniciar: true });
+    scene.celular.group.visible = false;
     ctx.hud.title('18:04', 'Hora punta');
     S.titleUntil = 2.4;
     INTRO.forEach((text) => S.queue.push({ text }));
@@ -183,7 +187,7 @@ export default {
       cam.rotation.y += diff * Math.min(1, dt * .9);
     }
 
-    if (ctx.input.pressed('KeyF')) flash.fire(now);
+    if (ctx.input.pressed('KeyF') && tiene(ctx, 'celular')) flash.fire(now);
     scene.light(flash.level(now), dt, flash);
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .6;
 
@@ -267,7 +271,29 @@ function responder(ctx, pasajero) {
   ctx.hud.elegir(opciones.map(([o]) => o)).then((i) => {
     if (S !== yo) return; // se salió o reinició la escena mientras elegía
     ctx.memoria[pasajero.name] = i;
-    S.queue.push({ text: opciones[i][1], speaker: pasajero, onEnd: () => nextBeat(ctx) });
+    S.queue.push({ text: opciones[i][1], speaker: pasajero });
+    entregar(ctx, pasajero);
+  });
+}
+
+// Cada pasajero te pasa algo que después sirve (mechanics/regalos.js). Estira el brazo,
+// lo recibes y recién ahí se puede seguir.
+function entregar(ctx, pasajero) {
+  const r = REGALOS[pasajero.name];
+  if (!r) { S.queue.push({ text: '…', onEnd: () => nextBeat(ctx) }); return; }
+  S.queue.push({
+    text: r.linea,
+    speaker: pasajero,
+    onStart: () => { pasajero.armR.rotation.x = -1.25; },
+  });
+  S.queue.push({
+    text: `Recibiste: ${r.nombre.toLowerCase()} ${r.de} · ${r.uso}`,
+    onStart: () => {
+      pasajero.armR.rotation.x = 0;
+      dar(ctx, pasajero.name);
+      if (r.id === 'celular') S.scene.celular.group.visible = true;
+    },
+    onEnd: () => nextBeat(ctx),
   });
 }
 
