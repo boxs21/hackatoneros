@@ -10,7 +10,7 @@ import { lambert, seeded } from '../world/ps1.js';
 export const CATCH_RADIUS = .42;
 
 export function createBorrados({
-  count = 300,
+  count: wanted = 300,
   seed = 7,
   zFrom = 3.5, // desde dónde empieza la multitud (hacia -z)
   zTo = -11.6,
@@ -19,7 +19,10 @@ export function createBorrados({
   colliders = [],
   reserve = 4, // espacios para los pasajeros que se convierten en borrados
   keepClear = [], // { x, z, r }: zonas donde no puede haber nadie (p. ej. frente a la tiza)
+  ladoTries = 46, // intentos de poner gente frente a los asientos
+  fillOutside = true, // rellenar con gente pegada a las ventanas hasta count
 } = {}) {
+  let count = wanted;
   const rnd = seeded(seed);
   const phase = rnd() * Math.PI * 2;
   const pathX = (z) => .78 * Math.sin((zFrom - z) * .5 + phase) * Math.min(1, (zFrom - z) / 2.5);
@@ -41,7 +44,7 @@ export function createBorrados({
     }
   }
   // frente a los asientos
-  for (let i = 0; i < 46; i++) {
+  for (let i = 0; i < ladoTries; i++) {
     const s = rnd() > .5 ? 1 : -1;
     const z = 12 - rnd() * 24;
     if (Math.abs(z - Math.round(z / 8) * 8) < .9) continue; // no en las puertas
@@ -51,6 +54,7 @@ export function createBorrados({
   // reservados (pasajeros convertidos), escondidos al inicio
   for (let i = 0; i < reserve; i++) people.push({ x: 0, z: 0, kind: 'reserva', hidden: true });
   // afuera, pegados al vidrio
+  if (!fillOutside) count = people.length;
   while (people.length < count) {
     const s = rnd() > .5 ? 1 : -1;
     people.push({ x: s * (2.75 + rnd() * .9), z: 12.5 - rnd() * 25, kind: 'afuera' });

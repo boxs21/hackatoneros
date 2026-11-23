@@ -130,6 +130,64 @@ const DRAW = {
     g.arc(53, 17, 7, 0, Math.PI * 2);
     g.fill();
   }],
+  avisoMal: [64, 32, (g, w, h, rnd) => {
+    g.fillStyle = '#e3d9c2';
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#5a0f12';
+    g.fillRect(0, 0, w, 9);
+    g.fillStyle = '#fff';
+    g.font = 'bold 8px monospace';
+    g.fillText('¿SUEÑO?', 3, 8);
+    g.fillStyle = '#2a0a0a';
+    g.font = '7px monospace';
+    g.fillText('NO LLEGARÁS', 3, 18);
+    g.fillText('A CASA.', 3, 26);
+    g.fillStyle = '#111';
+    g.beginPath();
+    g.arc(52, 20, 7, 0, Math.PI * 2);
+    g.fill();
+    for (let i = 0; i < 40; i++) g.clearRect(Math.floor(rnd() * w), Math.floor(rnd() * h), 1, 1);
+  }],
+  mapaTachado: [128, 16, (g, w, h) => {
+    g.fillStyle = '#eeeeea';
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#c23a33';
+    g.fillRect(6, 9, w - 12, 2);
+    const names = ['PEGA', '', '', 'TÚNEL', '', '', 'CASA'];
+    names.forEach((n, i) => {
+      const x = 6 + i * ((w - 12) / (names.length - 1));
+      g.fillStyle = '#fff';
+      g.fillRect(x - 2, 7, 5, 5);
+      g.fillStyle = '#c23a33';
+      g.fillRect(x - 1, 8, 3, 3);
+      if (n) {
+        g.fillStyle = '#222';
+        g.font = 'bold 6px monospace';
+        g.fillText(n, Math.min(w - 22, Math.max(1, x - 8)), 6);
+      }
+    });
+    // CASA tachada a mano
+    g.strokeStyle = '#111';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.moveTo(w - 26, 1); g.lineTo(w - 3, 14);
+    g.moveTo(w - 3, 1); g.lineTo(w - 26, 14);
+    g.stroke();
+  }],
+  reglas: [32, 48, (g, w, h) => {
+    g.fillStyle = '#f2b705';
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#111';
+    g.fillRect(1, 1, w - 2, 9);
+    g.fillStyle = '#f2b705';
+    g.font = 'bold 7px monospace';
+    g.fillText('AVISO', 6, 8);
+    g.fillStyle = '#111';
+    g.font = '5px monospace';
+    ['SI VE ALGO', 'EXTRAÑO:', 'DÉ LA', 'VUELTA.'].forEach((l, i) => g.fillText(l, 2, 17 + i * 5));
+    g.fillRect(2, 36, w - 4, 1);
+    ['SI NO:', 'SIGA.'].forEach((l, i) => g.fillText(l, 2, 42 + i * 5));
+  }],
   mapa: [128, 16, (g, w, h) => {
     g.fillStyle = '#eeeeea';
     g.fillRect(0, 0, w, h);

@@ -8,5 +8,6 @@ import borrados from './borrados.js';
 import vagonEscolar from './vagonEscolar.js';
 import vagonVendedor from './vagonVendedor.js';
 import final from './final.js';
+import vagonOficinista from './vagonOficinista.js'; // extra (Camilo): al final para no mover las teclas 1–8
 
-export const STATES = [inicio, horaPunta, apagon, losCinco, borrados, vagonEscolar, vagonVendedor, final];
+export const STATES = [inicio, horaPunta, apagon, losCinco, borrados, vagonEscolar, vagonVendedor, final, vagonOficinista];

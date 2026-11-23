@@ -61,7 +61,7 @@ function drawKeypad(S) {
 
 export default {
   id: 'vagonEscolar',
-  next: 'vagonVendedor',
+  next: 'vagonOficinista', // extra: el vagón que se repite; de ahí sigue al Vendedor
   hint: 'Hay 3 números de tiza (paredes, piso o techo); las rayitas marcan el orden. El teclado está junto a la puerta del fondo.',
   autoAdvance: true,
   enter(ctx, data = {}) {

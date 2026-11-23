@@ -18,6 +18,8 @@ const SEGMENTS = [[-12.9, -8.75], [-7.25, -0.75], [0.75, 7.25], [8.75, 12.9]];
 export function createVagon({ tubeFlicker = false, lit = false } = {}) {
   const vagon = new THREE.Group();
   const colliders = []; // { x, z, r }
+  // piezas sueltas para que otros estados las cambien (anomalías)
+  const parts = { ads: [], maps: [], leaves: [], emergencia: [], endDoors: [], straps: null, mats: null };
 
   const mats = {
     suelo: lambert({ map: textura('suelo', 4, 22) }),
@@ -71,6 +73,7 @@ export function createVagon({ tubeFlicker = false, lit = false } = {}) {
       if (len > 5) {
         const ad = box(.02, .4, .8, mats.aviso, wx - s * .07, 2.7, mid + 1.6);
         ad.rotation.y = s > 0 ? Math.PI : 0;
+        parts.ads.push(ad);
       }
       // banca
       const seatLen = len - .5;
@@ -89,11 +92,13 @@ export function createVagon({ tubeFlicker = false, lit = false } = {}) {
       for (const k of [-1, 1]) {
         const leaf = box(.06, 2.15, .74, mats.puerta, wx - s * .03, 1.08, dz + k * .37);
         leaf.scale.z = k; // espeja la franja amarilla hacia el centro
+        parts.leaves.push({ mesh: leaf, s, dz, k });
       }
       box(.14, 2.25, .08, mats.goma, wx - s * .02, 1.1, dz);
       box(.16, .14, 1.6, mats.marco, wx - s * .02, 2.22, dz);
       const map = box(.02, .14, 1.2, mats.mapa, wx - s * .1, 2.45, dz);
       map.rotation.y = s > 0 ? Math.PI : 0;
+      parts.maps.push(map);
     }
     // túnel afuera
     box(.2, 6, 30, mats.tunel, s * 4.4, 1.5, 0);
@@ -132,7 +137,7 @@ export function createVagon({ tubeFlicker = false, lit = false } = {}) {
   for (const s of [-1, 1]) {
     for (let z = -11; z <= 11; z += 2.2) tubes.push(box(.22, .05, 1.6, mats.tubo, s * .75, 3.04, z));
   }
-  for (let z = -10; z <= 10; z += 5) box(.12, .04, .12, mats.emergencia, 0, 3.05, z);
+  for (let z = -10; z <= 10; z += 5) parts.emergencia.push(box(.12, .04, .12, mats.emergencia, 0, 3.05, z));
 
   // paredes de los extremos con puerta de intercomunicación
   for (const e of [-1, 1]) {
@@ -142,6 +147,7 @@ export function createVagon({ tubeFlicker = false, lit = false } = {}) {
     box(1.6, 1, .12, mats.paredAlta, 0, 2.7, z);
     const door = box(1.55, 2.2, .06, mats.puerta, 0, 1.1, z - e * .02);
     if (e > 0) door.rotation.y = Math.PI;
+    parts.endDoors.push(door);
     box(.3, .12, .05, mats.rojo, 0, 2.4, z - e * .08);
   }
 
@@ -151,9 +157,14 @@ export function createVagon({ tubeFlicker = false, lit = false } = {}) {
   const flickMat = lambert({ color: 0x3a3a36, emissive: 0x000000 });
   if (tubeFlicker) flickTube.material = flickMat;
 
+  parts.straps = { list: straps, strapMesh, ringMesh };
+  parts.mats = mats;
+  parts.tubes = tubes;
+
   return {
     group: vagon,
     colliders,
+    parts,
     update(dt) {
       if (!tubeFlicker) return 0;
       flickT += dt;
