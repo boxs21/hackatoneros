@@ -41,7 +41,7 @@ const OPCIONES = [['comenzar', 'COMENZAR'], ['como', 'CÓMO SE JUEGA'], ['credit
 const ESCENAS = {
   horaPunta: 'HORA PUNTA', apagon: 'EL APAGÓN', losCinco: 'LOS CINCO', borrados: 'LOS BORRADOS',
   vagonEscolar: 'VAGÓN DEL ESCOLAR', vagonVendedor: 'VAGÓN DEL VENDEDOR', final: 'FINAL',
-  vagonOficinista: 'VAGÓN DEL OFICINISTA',
+  vagonOficinista: 'VAGÓN DEL OFICINISTA', despertar: 'DESPERTAR',
 };
 const PANELES = {
   como: ['CÓMO SE JUEGA', 'LLEGA A CASA SIN QUE TE TOQUEN.', 'WASD  MOVERSE · MOUSE  MIRAR', 'F  FOTO. VES, PERO SE ACERCAN.', 'E  USAR · ESPACIO  SALTAR', '1 2  RESPONDER · TAB  MISIONES', 'ESC  PAUSA Y MENÚ', 'MEJOR CON AUDÍFONOS.'],
@@ -82,7 +82,7 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
   // escenas a las que se puede saltar (todas menos este menú), en el orden del juego
   const escenas = ctx.fsm.ids.filter((id) => id !== 'inicio');
   let selEscena = 0;
-  const cajaEscena = (i) => ({ x: 14, y: 111 + i * 11, w: 208, h: 11 });
+  const cajaEscena = (i) => ({ x: 14, y: 111 + i * 10, w: 208, h: 10 });
 
   // --- Texto en matriz de puntos -------------------------------------------
 
@@ -160,7 +160,7 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
       texto(g, 'ESCENAS · IR DIRECTO', 22, 102, 1, AMBAR);
       escenas.forEach((id, i) => {
         const activa = i === selEscena;
-        const y = 113 + i * 11;
+        const y = 112 + i * 10;
         if (activa) texto(g, '>', 16, y, 1, AMBAR);
         texto(g, `${i + 1} ${ESCENAS[id] ?? id.toUpperCase()}`, 26, y, 1, activa ? AMBAR : TINTA);
       });

@@ -7,10 +7,12 @@
 // - Aunque no hagas nada, los borrados se arriman de a poco: quedarse quieto no sirve.
 // - [E] Completo italiano (regalo de la Señora): lo tiras y los borrados se van al olor.
 // - El chocolate del Vendedor te salva una vez. Si te atrapan, reinicias el vagón en < 1 s.
-// - Llegas a la puerta del fondo: la caja de chocolates en el piso. Sigue Casa.
+// - A mitad del vagón todo se desarma (world/colapso.js): tiembla, vuelven las luces a tirones,
+//   caen los fierros, revientan los vidrios, el piso cede y caes. Destello blanco: despiertas en tu cama.
 import * as THREE from 'three';
 import { createBorrados, CATCH_RADIUS } from '../mechanics/borrados.js';
 import { createFlash } from '../mechanics/flash.js';
+import { createColapso } from '../world/colapso.js';
 import { gastar, mostrarRegalos, tiene } from '../mechanics/regalos.js';
 import { createObjeto } from '../world/figura.js';
 import { createScare, caughtFrame } from '../world/susto.js';
@@ -26,7 +28,7 @@ let S = null;
 
 export default {
   id: 'vagonVendedor',
-  next: 'final',
+  next: 'despertar',
   hint: 'Cierra los ojos al flash: sigue la voz «a luca…». Si se acercan, tira el completo con E.',
   autoAdvance: true,
   enter(ctx, data = {}) {
@@ -58,6 +60,8 @@ export default {
 
     S = { atras: new THREE.Vector3(), detrasAt: 0, cortarAt: 0, scene, crowd, scare, retry, t: 0, caught: -1, done: false, leaveAt: 0, llavero, guia, voz,
       bestZ: START_Z, nextCreep: creepEvery(), intro: retry ? 99 : 0, flashes: 0 };
+    S.colapso = createColapso(ctx, scene, { crowd });
+    if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
     S.flash = createFlash({
       onFire(count) {
         S.flashes = count;
@@ -81,6 +85,20 @@ export default {
       if (shown > .55 && !S.done) {
         S.done = true;
         ctx.restart({ retry: S.retry + 1 });
+      }
+      return;
+    }
+    // A mitad de camino el vagón se desarma. Desde ahí manda world/colapso.js.
+    if (!S.colapso.activo && !S.done && cam.position.z < 0) {
+      S.done = true;
+      S.voz.stop?.(.6);
+      S.colapso.start();
+      ctx.progress();
+    }
+    if (S.colapso.activo) {
+      if (S.colapso.update(dt, flash) && !S.fuera) {
+        S.fuera = true;
+        ctx.go(this.next, {}, { fade: false });
       }
       return;
     }

@@ -171,7 +171,7 @@ Todo lo demás (código, sonido generado por código, texturas y objetos hechos 
 | Modelo «Hoodie Character» (escolar) | Quaternius | https://poly.pizza/m/gKLBoRsyKe | CC0 1.0 | Materiales con look PS1 y escala |
 | Modelo «Casual Character» (vendedor) | Quaternius | https://poly.pizza/m/kZ3DmIoGip | CC0 1.0 | Materiales con look PS1 y escala |
 | Fuente Cormorant Garamond (modo pintura) | Christian Thalmann | https://github.com/CatharsisFonts/Cormorant | SIL Open Font License 1.1 | Ninguno |
-| Música del menú «Before the City Wakes» | Por confirmar | Por confirmar | Por confirmar | Por confirmar |
+| Música del menú «Before the City Wakes» | Generada con IA: Gemini, de Google (pedida por Andy Villarroel; no tiene autor humano) | https://gemini.google.com (el archivo trae la firma de procedencia C2PA de Google) | Uso según las condiciones de servicio de Gemini; no es obra de terceros | Ninguno |
 | Logo de Codex | OpenAI | https://hackathon.codexparatodos.com/logos/codex.png | Entregado por la organización de la hackatón | Pintado en blanco para verse sobre fondo oscuro |
 
 ### Aviso
