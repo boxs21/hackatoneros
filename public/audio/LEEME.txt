@@ -1,1 +1,22 @@
-Audios de Andy (voces, efectos, música). Formato .ogg o .mp3, nombres en minúscula-con-guiones.
+AUDIO DE FIN DE SERVICIO (dueño: Andy)
+
+Todo el sonido del juego se genera por código (src/audio/synth.js), así que
+esta carpeta puede estar vacía y el juego suena igual.
+
+Un archivo puesto aquí REEMPLAZA al sonido generado que tenga el mismo nombre.
+Formatos: .ogg, .mp3, .wav o .m4a. Nombres en minúscula-con-guiones, sin tildes ni ñ.
+
+VOCES (grabadas por el equipo, 3 tomas cada una, se queda la mejor):
+  voz-<personaje>-<frase>.ogg
+  personajes: escolar, oficinista, senora, vendedor
+  ejemplo:    voz-vendedor-a-luca.ogg   ->  ctx.audio.voz('vendedor', 'a-luca')
+  Esa misma grabación es la que guía al jugador en el vagón del Vendedor.
+  Mientras falte una grabación, suena una voz de relleno sin palabras.
+
+EFECTOS, AMBIENTES Y MÚSICA (opcional, solo si se quiere reemplazar uno):
+  flash, multitud, frenazo, puertas, pitido, empujon, paso, desaparece,
+  atrapado, susto, celular, notificacion, ui, latido, crujido
+  anden, vagon, tunel, casa (ambientes y música, en bucle)
+
+Para grabar: celular pegado a la boca, pieza sin eco, exportar en mono.
+Nada de sonidos oficiales de Metro de Santiago.
