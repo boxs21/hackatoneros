@@ -343,7 +343,7 @@ function updateLurker(ctx, S) {
     // se fue… y el tubo no vuelve a prender
     L.state = 'gone';
     S.scene.vagon.killTube();
-    if (S.msg === 2) S.msgAt = S.t + 2.5;
+    if (S.msg === 2) S.msgAt = S.t + 5.5; // aire entre la silueta y "hay uno detrás tuyo"
   }
   L.prevOn = on;
 }
