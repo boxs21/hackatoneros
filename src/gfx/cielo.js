@@ -108,7 +108,7 @@ vec3 cielo(vec3 o, vec3 d) {
     + 0.9 * pow(vnoise(rumbo * 21.0 + vec2(3.0, uTime * 0.1)), 3.0);
   float fuera = max(ang - R, 0.0);
   // anillo fino y no tan fuerte: si quema, el bloom rellena el disco y se lee como mancha
-  col += uCorona * (exp(-fuera * 6.0) * hilos * 0.38 + exp(-fuera * 26.0) * hilos * 0.45 + exp(-fuera * 160.0) * 1.05);
+  col += uCorona * (exp(-fuera * 6.0) * hilos * 0.38 + exp(-fuera * 26.0) * hilos * 0.45 + exp(-fuera * 110.0) * 1.5);
   col = mix(vec3(0.0), col, smoothstep(R - 0.004, R, ang));
 
   // nubes bajas: un techo a 24 m sobre el agua, jirones que pasan delante de todo
