@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import { createBorrados, CATCH_RADIUS } from '../mechanics/borrados.js';
 import { createFlash } from '../mechanics/flash.js';
+import { crearBolsillo } from '../mechanics/bolsillo.js';
 import { basic, lambert, pixelTexture } from '../world/ps1.js';
 import { textura, garabato } from '../world/texturas.js';
 import { setupVagon, walkVagon } from '../world/vagonEscena.js';
@@ -76,6 +77,7 @@ export default {
     S = { scene, crowd, scare, anomaly, progress, loop, solved, wrongStreak, t: 0, decided: false, wrongT: -1,
       flashOnly: [], extraCrowds: [], stalker: null, started: false, lines: [], lineAt: 0 };
     if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
+    S.bolsillo = crearBolsillo(ctx); // regalos de la hora punta
     S.flash = createFlash({
       onFire(count) {
         ctx.audio.sfx('flash');
@@ -132,6 +134,8 @@ export default {
     }
 
     walkVagon(dt, ctx, { colliders: scene.colliders.concat(S.blockers || []), speed: 2.0, minZ: -12.4, maxZ: 12.45 });
+    S.bolsillo.update(cam);
+    if (!S.decided && ctx.input.pressed('KeyE')) S.bolsillo.tirar([crowd, ...S.extraCrowds], cam);
     if (cam.position.z < 9.6) S.started = true;
 
     if (!S.decided && ctx.input.pressed('KeyF')) flash.fire(now);
@@ -159,7 +163,9 @@ export default {
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .6;
     const danger = THREE.MathUtils.clamp((1.35 - d) / .9, 0, 1);
     scene.overlay.u.uDanger.value += (danger - scene.overlay.u.uDanger.value) * Math.min(1, dt * 8);
-    if (d < CATCH_RADIUS && !S.decided) {
+    if (d < CATCH_RADIUS && !S.decided && S.bolsillo.salvar([crowd, ...S.extraCrowds], cam, scene)) {
+      // el chocolate te salvó (no cuenta como error)
+    } else if (d < CATCH_RADIUS && !S.decided) {
       fail(ctx, S.anomaly === 'acecho' ? 'Te alcanzó. Cuando algo viene hacia ti: date vuelta.' : 'Te atraparon. Cada flash los acerca.');
       return;
     }

@@ -39,7 +39,7 @@ const ACENTO = { '́': 6, '̃': 14 }; // tilde aguda y virgulilla, dos filas sob
 const OPCIONES = [['comenzar', 'COMENZAR'], ['como', 'CÓMO SE JUEGA'], ['creditos', 'CRÉDITOS']];
 const PANELES = {
   como: ['CÓMO SE JUEGA', '', 'W A S D   MOVERSE', 'MOUSE     MIRAR', 'F         FLASH PARA VER', 'E         TOMAR O USAR', 'ESC       PAUSA', '', 'CADA FLASH LOS ACERCA.'],
-  creditos: ['CRÉDITOS', '', 'VALENTÍN CASTRO', 'CAMILO BUFADEL', 'RENATO LENIS', 'ANDY VILLARROEL', '', 'MÚSICA: BEFORE THE CITY WAKES'],
+  creditos: ['CRÉDITOS', '', 'VALENTÍN CASTRO', 'CAMILO BUFADEL', 'RENATO LENIS', 'ANDY VILLARROEL', 'MÚSICA: BEFORE THE CITY WAKES', 'HECHO CON CODEX'],
 };
 
 export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
@@ -51,6 +51,26 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
   const lienzo = raiz.querySelector('canvas');
   const g = lienzo.getContext('2d');
   const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Ingrediente obligatorio: el logo de Codex (oficial, public/codex.png).
+  // Viene negro con fondo transparente: se pinta del color del texto para que se vea.
+  const LOGO = 20;
+  const logo = document.createElement('canvas');
+  logo.width = logo.height = LOGO;
+  let logoListo = false;
+  {
+    const img = new Image();
+    img.onload = () => {
+      const x = logo.getContext('2d');
+      x.drawImage(img, 0, 0, LOGO, LOGO);
+      x.globalCompositeOperation = 'source-in';
+      x.fillStyle = TINTA;
+      x.fillRect(0, 0, LOGO, LOGO);
+      logoListo = true;
+    };
+    img.onerror = () => console.error('[menu] no se pudo cargar el logo de Codex');
+    img.src = `${import.meta.env.BASE_URL}codex.png`;
+  }
 
   let sel = 0, panel = null, vivo = true, raf = 0, reloj = 0, antes = performance.now(), entrada = 0;
 
@@ -129,6 +149,7 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
       g.fillStyle = AMBAR; g.fillRect(12, 92, 212, 1); g.fillRect(12, 92, 1, 118);
       PANELES[panel].forEach((linea, i) => texto(g, linea, 22, 102 + i * 11, 1, i === 0 ? AMBAR : TINTA));
       texto(g, 'ESC · VOLVER', 22, 198, 1, GRIS);
+      if (panel === 'creditos' && logoListo) g.drawImage(logo, 196, 100);
     } else {
       OPCIONES.forEach(([, nombre], i) => {
         const activa = i === sel;
@@ -136,6 +157,10 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
         if (activa && (quieto || Math.sin(reloj * 6) > -0.4)) texto(g, '>', 16, y, 2, AMBAR);
         texto(g, nombre, 34, y, 2, activa ? AMBAR : GRIS);
       });
+      if (logoListo) {
+        g.drawImage(logo, W - 14 - LOGO, 196);
+        texto(g, 'HECHO CON CODEX', W - 14 - LOGO - 6 - ancho('HECHO CON CODEX'), 203, 1, GRIS);
+      }
     }
     g.globalAlpha = 1;
   }

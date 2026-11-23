@@ -124,12 +124,12 @@ export default {
     updatePasajeros(passengers, dt, cam);
     llavero.position.set(cam.position.x, .5, cam.position.z);
 
-    // El chocolate del vendedor: lo tiras y los que están cerca retroceden a buscarlo.
-    if (!S.done && ctx.input.pressed('KeyE') && tiene(ctx, 'chocolate')) {
-      gastar(ctx, 'chocolate');
+    // El completo italiano de la señora: lo tiras y los que están cerca se van al olor.
+    if (!S.done && ctx.input.pressed('KeyE') && tiene(ctx, 'completo')) {
+      gastar(ctx, 'completo');
       crowd.step(cam.position, -.6, 4);
       ctx.audio.sfx('paso', { cerca: true });
-      ctx.hud.subtitle('Tiraste el chocolate. Algo se agacha a recogerlo.', 2600);
+      ctx.hud.subtitle('Tiraste el completo. Algo se agacha a olerlo.', 2600);
     }
 
     if (!S.done && ctx.input.pressed('KeyF')) flash.fire(now);
@@ -144,13 +144,13 @@ export default {
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .75;
     scene.overlay.u.uDanger.value += (danger - scene.overlay.u.uDanger.value) * Math.min(1, dt * 8);
     if (danger > .3 && Math.floor(S.t * 1.6) !== Math.floor((S.t - dt) * 1.6)) ctx.audio.sfx('latido', { volumen: danger });
-    if (d < CATCH_RADIUS && tiene(ctx, 'estampita')) {
-      // La estampita de la señora: te suelta una vez y los aleja.
-      gastar(ctx, 'estampita');
+    if (d < CATCH_RADIUS && tiene(ctx, 'chocolate')) {
+      // El chocolate del vendedor («pa'l susto»): te suelta una vez y los aleja.
+      gastar(ctx, 'chocolate');
       crowd.step(cam.position, -.9, 3);
       scene.overlay.u.uFlash.value = .9;
       ctx.audio.sfx('crujido');
-      ctx.hud.subtitle('Algo te agarró… y te soltó. La estampita se deshizo en tu bolsillo.', 3200);
+      ctx.hud.subtitle('Algo te agarró… y te soltó. El chocolate se te cayó del bolsillo.', 3200);
     } else if (d < CATCH_RADIUS) {
       S.caught = 0;
       ctx.audio.sfx('atrapado');

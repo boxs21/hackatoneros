@@ -114,6 +114,21 @@ export default {
       lastComplain: -9, lastMurmur: 4, endAt: 0, ended: false, jolt: 0, flickerAt: [],
     };
     if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
+    // "!" ámbar sobre el pasajero al que hay que ir (se ve con los modelos 3D)
+    const c = document.createElement('canvas');
+    c.width = 8;
+    c.height = 16;
+    const g = c.getContext('2d');
+    g.fillStyle = '#ffb800';
+    g.fillRect(3, 1, 2, 9);
+    g.fillRect(3, 12, 2, 2);
+    const tex = new THREE.CanvasTexture(c);
+    tex.magFilter = tex.minFilter = THREE.NearestFilter;
+    S.marca = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, fog: false }));
+    S.marca.scale.set(.2, .4, 1);
+    S.marca.renderOrder = 990;
+    S.marca.visible = false;
+    ctx.stage.add(S.marca);
     S.flash = createFlash({
       onFire() {
         ctx.audio.sfx('flash', { multitud: false });
@@ -209,6 +224,8 @@ export default {
       current.armR.rotation.x += (target - current.armR.rotation.x) * Math.min(1, dt * 8);
     }
     for (const p of passengers) if (p !== current || S.talking) p.armR.rotation.x *= Math.max(0, 1 - dt * 6);
+    S.marca.visible = Boolean(current && !S.talking && S.t > CINE && !S.cinematic);
+    if (S.marca.visible) S.marca.position.set(current.x, 2.08 + Math.sin(S.t * 4) * .04, current.z);
     // mirar suave hacia quien habla (si el jugador no está moviendo el mouse)
     if (S.speaker && !S.cinematic && Math.abs(ctx.input.mouse.dx) < 1) {
       const dx = S.speaker.x - cam.position.x;
