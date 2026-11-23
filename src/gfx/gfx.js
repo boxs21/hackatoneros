@@ -43,6 +43,11 @@ const PALETAS = {
     cielo: { cenit: [0, .04, .08], medio: [0, .22, .28], horiz: [.12, .8, .72], corona: [1, .9, .6] } },
   vagonOficinista: { niebla: [.46, .14, .75], ambO: .015, ambL: .3, flash: .5, dens: .14, lavado: .22, // violeta
     cielo: { cenit: [.03, 0, .09], medio: [.26, .05, .42], horiz: [.95, .3, .55], corona: [1, .76, .9] } },
+  // los que todavía no son vagón: su cielo queda listo (y se ve con ?mundo=feria / casa)
+  vagonVendedor: { niebla: [.85, .42, .1], ambO: .012, ambL: .3, flash: .5, dens: .15, lavado: .2, // ámbar de feria + cobalto
+    cielo: { cenit: [0, .025, .12], medio: [.3, .12, .04], horiz: [1, .5, .1], corona: [1, .84, .48] } },
+  final: { niebla: [.9, .6, .55], ambO: .012, ambL: .3, flash: .5, dens: .13, lavado: .18, // alba: rosa y oro, con lavanda
+    cielo: { cenit: [.07, .07, .22], medio: [.42, .22, .4], horiz: [1, .66, .48], corona: [1, .93, .78] } },
 };
 
 export function createGfx(ctx) {
@@ -502,8 +507,12 @@ export function createGfx(ctx) {
     mundo.tapaPiso.visible = hayPiso;
     mundo.foso.visible = !hayPiso;
     if (mundo.group.visible) {
-      const c = (PALETAS[ctx.fsm.current] || PALETAS.base).cielo || PALETAS.base.cielo;
-      const kc = Math.min(1, dt * 2);
+      const esc = mundo.escenarios;
+      // otro vagón, otro mundo: el cielo se vuelve a abrir desde el eclipse, ya con sus colores
+      const otro = esc.elegir(ctx.fsm.current);
+      if (otro) abre = 0;
+      const c = (PALETAS[esc.paleta(ctx.fsm.current)] || PALETAS.base).cielo || PALETAS.base.cielo;
+      const kc = otro ? 1 : Math.min(1, dt * 2);
       const mu = mundo.u;
       mu.uTime.value = tiempo;
       mu.uAbre.value = abre * abre * (3 - 2 * abre);
