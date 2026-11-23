@@ -35,7 +35,7 @@ export const REGALOS = {
 };
 
 const ORDEN = ['Oficinista', 'Escolar', 'Señora', 'Vendedor'];
-const VISIBLE = new Set(['horaPunta', 'borrados']);
+const VISIBLE = new Set(['horaPunta', 'borrados', 'vagonEscolar', 'vagonOficinista', 'vagonVendedor']);
 const TODOS = { celular: true, llavero: true, completo: true, chocolate: true };
 
 let box = null;
