@@ -6,7 +6,7 @@ import { createCelular } from './celular.js';
 // Arma el vagón a oscuras dentro de ctx.stage: luces de emergencia, niebla,
 // la luz del flash (sale del celular) y la capa de pantalla.
 // lit = true: hora punta, luces encendidas y el tren andando (luces del túnel pasan).
-export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, tubeFlicker = false, lit = false, litColor = 0xeef4ff, litPower = 2.2 } = {}) {
+export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, tubeFlicker = false, lit = false, litColor = 0xeef4ff, litPower = 2.2, roto = false } = {}) {
   const { camera, stage, scene } = ctx;
   camera.rotation.order = 'YXZ';
   camera.position.set(0, 1.55, z);
@@ -14,7 +14,7 @@ export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, t
   scene.background = new THREE.Color(0x000000);
   scene.fog = lit ? new THREE.Fog(0x0d0e10, 8, 40) : new THREE.Fog(0x000000, 1.2, fogFar);
 
-  const vagon = createVagon({ tubeFlicker, lit });
+  const vagon = createVagon({ tubeFlicker, lit, roto });
   const hemi = new THREE.HemisphereLight(0x8aa0c8, 0x2a2018, ambient);
   // rojo tenue en las puertas de los extremos: la única referencia en la oscuridad
   const exitLight = new THREE.PointLight(0xff3020, 1.6, 7, 1);
