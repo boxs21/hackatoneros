@@ -17,6 +17,7 @@ import { REGALOS, dar, mostrarRegalos, tiene } from '../mechanics/regalos.js';
 import { createPasajeros, updatePasajeros } from '../world/pasajeros.js';
 import { setupVagon, walkVagon } from '../world/vagonEscena.js';
 import { createCelular3d } from '../ui/celular3d.js';
+import './horaPunta.css';
 
 // Textos provisorios (Renato los puede cambiar). Duración automática según largo.
 const INTRO = [
@@ -84,6 +85,12 @@ const CINE = 3.8; // s sin control al empezar
 const FRENAZO_TRAS_ALTAVOZ = 1.4;
 const RECLAMOS = ['¡Permiso!', '¡Oiga, no empuje!', 'Uf…', 'Córrase pa’ dentro…', '¡Ya po!', 'Con permiso, con permiso…'];
 const MURMULLOS = ['…y llegué tarde otra vez…', '¿Alguien tiene hora?', '…mañana también, sí…', '…este tren va más lento que nunca…'];
+
+// Tarjeta de controles: antes de la apertura, con todo quieto, para que no se mezcle
+// con el título ni con los subtítulos. Se va al moverte/mirar (o sola) y no vuelve.
+const CONTROLES_MIN = 1.2; // s mínimos en pantalla
+const CONTROLES_MAX = 6; // s: se va sola
+let controlesVistos = false;
 
 const SPEED_FREE = 1.3;
 const SPEED_PUSH = .65;
@@ -168,6 +175,7 @@ export default {
     // de cámara. La cámara del celular recién aparece después del apagón (Los cinco).
     scene.celular.group.visible = false;
     scene.overlay.u.uVig.value = 0;
+    if (!controlesVistos) S.controles = abrirControles();
     INTRO.forEach((text) => S.queue.push({ text }));
     S.queue[0].delay = CINE + .3;
     ctx.audio.ambiente('vagon');
@@ -177,6 +185,21 @@ export default {
     const { scene, passengers, crowd, flash } = S;
     const cam = ctx.camera;
     const now = performance.now();
+    // ---- tarjeta de controles: el tiempo de la escena no corre hasta que se va
+    if (S.controles) {
+      const c = S.controles;
+      c.t += dt;
+      // al probar una tecla se ilumina y la tarjeta se va medio segundo después
+      if (pintarControles(ctx, c) && !c.probo) c.probo = c.t;
+      if ((c.probo && c.t > CONTROLES_MIN && c.t - c.probo > .5) || c.t > CONTROLES_MAX) {
+        cerrarControles();
+        controlesVistos = true;
+        ctx.progress();
+      }
+      crowd.update(dt, cam.position);
+      scene.light(0, dt, flash);
+      return;
+    }
     S.t += dt;
     if (S.titleAt && S.t > S.titleAt) {
       S.titleAt = 0;
@@ -313,11 +336,55 @@ export default {
     S.tel.update(cam, dt);
   },
   exit(ctx) {
+    cerrarControles(true);
     S?.scene.dispose();
     S = null;
     ctx.fader.clear(0);
   },
 };
+
+const MOUSE_SVG = '<svg viewBox="0 0 34 52" fill="none" aria-hidden="true">'
+  + '<rect x="2" y="2" width="30" height="48" rx="15" fill="#e9e9e3" stroke="#85857f" stroke-width="2"/>'
+  + '<path d="M17 2v17M2 19h30" stroke="#85857f" stroke-width="2"/>'
+  + '<rect x="15" y="8" width="4" height="7" rx="2" fill="#f2b705"/></svg>';
+const TECLAS = [['KeyW', 'W'], ['KeyA', 'A'], ['KeyS', 'S'], ['KeyD', 'D']];
+
+function abrirControles() {
+  const el = document.createElement('div');
+  el.className = 'controles';
+  el.setAttribute('role', 'status');
+  el.innerHTML = `<div class="controles-titulo">CONTROLES</div>
+    <div class="controles-fila">
+      <div class="controles-grupo"><div class="wasd">${TECLAS.map(([k, t]) => `<kbd data-k="${k}"${k === 'KeyW' ? ' class="pulso"' : ''}>${t}</kbd>`).join('')}</div><small>Moverse</small></div>
+      <div class="controles-sep"></div>
+      <div class="controles-grupo"><div class="mouse">${MOUSE_SVG}</div><small>Mirar</small></div>
+    </div>`;
+  (document.getElementById('hud') || document.body).appendChild(el);
+  requestAnimationFrame(() => el.classList.add('on'));
+  return { el, t: 0, probo: 0, teclas: [...el.querySelectorAll('kbd')], mouse: el.querySelector('.mouse') };
+}
+
+// Las teclas de la tarjeta se iluminan cuando el jugador las aprieta.
+function pintarControles(ctx, c) {
+  let algo = false;
+  for (const k of c.teclas) {
+    const abajo = ctx.input.down(k.dataset.k) || (k.dataset.k === 'KeyW' && ctx.input.down('ArrowUp'));
+    k.classList.toggle('apretada', abajo);
+    algo ||= abajo;
+  }
+  const miro = Math.abs(ctx.input.mouse.dx) + Math.abs(ctx.input.mouse.dy) > 2;
+  c.mouse.classList.toggle('apretada', miro);
+  return algo || miro;
+}
+
+function cerrarControles(ya = false) {
+  const el = S?.controles?.el;
+  if (S) S.controles = null;
+  if (!el) return;
+  el.classList.remove('on');
+  if (ya) el.remove();
+  else setTimeout(() => el.remove(), 400);
+}
 
 function say(ctx, text, ms = lineMs(text)) {
   if (text) ctx.hud.subtitle(text, ms); // texto vacío = silencio (pausa dramática)

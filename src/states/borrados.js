@@ -14,13 +14,18 @@ import { createScare, caughtFrame } from '../world/susto.js';
 import { VAGON } from '../world/vagon.js';
 
 const FOV = 70; // el de siempre (main.js); las muertes lo cierran un rato
+// Misión: sacarle una foto a cada sobreviviente. La foto que le apunta a uno lo condena.
+const APUNTA = .38; // rad (~22°) desde el centro de la vista
+const APUNTA_LEJOS = 10; // m
+const mision = (n, total) => `Sácale una foto a cada sobreviviente (${n}/${total})`;
+const _fwd = new THREE.Vector3();
 
 let S = null;
 
 export default {
   id: 'borrados',
   next: 'vagonEscolar',
-  hint: 'Flash, mira el hueco entre ellos y camina a oscuras. No abuses: cada flash los acerca.',
+  hint: 'Apúntale a cada sobreviviente y saca la foto. Después, camina a oscuras: cada flash los acerca.',
   autoAdvance: true,
   enter(ctx, data = {}) {
     const retry = data.retry || 0;
@@ -51,9 +56,13 @@ export default {
       ctx.hud.subtitle(retry === 1 ? 'Otra vez. Flash, memoriza, camina a oscuras.' : 'Menos flashes. Más memoria.', 3000);
     }
 
+    if (!retry) ctx.misiones?.set(mision(0, passengers.length));
+
     S.flash = createFlash({
       onFire(count) {
         const pos = ctx.camera.position;
+        // desde la 2.ª foto los borrados se acercan: se dice una vez, cuando haya silencio
+        if (count >= 2 && !S.cercaDicho) S.cercaPend = true;
         ctx.audio.sfx('flash');
         // El primer flash es gratis; después, cada uno los acerca.
         crowd.step(pos, count === 1 && !retry ? 0 : .25);
@@ -69,14 +78,18 @@ export default {
           crowd.spawnBehind(pos, ctx.camera.rotation.y);
           ctx.audio.sfx('crujido', { detras: true });
         }
-        // Cada flash trae a uno: lo ves agarrar al siguiente pasajero y sacarlo por la ventana.
-        if (S.vanished < passengers.length && !muertes.busy) {
-          const p = passengers[S.vanished];
-          muertes.start(p, S.vanished);
+        // La foto que le apunta a un sobreviviente lo trae: lo ves agarrarlo y sacarlo por la ventana.
+        const p = S.vanished < passengers.length && !muertes.busy ? apuntado(ctx.camera, passengers) : null;
+        if (p) {
+          S.vanished += 1;
+          muertes.start(p, passengers.indexOf(p), { ultimo: S.vanished >= passengers.length });
           crowd.convert(p.x, p.z);
           crowd.face(pos);
-          S.vanished += 1;
+          ctx.misiones?.set(S.vanished >= passengers.length ? null : mision(S.vanished, passengers.length));
           ctx.progress();
+        } else if (S.vanished < passengers.length && !muertes.busy && !S.vaciaDicha) {
+          S.vaciaDicha = true;
+          ctx.hud.subtitle('La foto salió sin nadie. Apúntales a los demás.', 2600);
         }
       },
     });
@@ -124,6 +137,15 @@ export default {
       cam.updateProjectionMatrix();
     }
     updatePasajeros(passengers, dt, cam);
+    // «se mueven con las fotos»: después de que termine la muerte y su texto
+    if (S.cercaPend && !muertes.busy) {
+      S.cercaAt ??= S.t + (S.vanished ? 2.4 : .9);
+      if (S.t >= S.cercaAt) {
+        S.cercaPend = false;
+        S.cercaDicho = true;
+        ctx.hud.subtitle('Entre foto y foto… se acercaron.', 2800);
+      }
+    }
     llavero.position.set(cam.position.x, .5, cam.position.z);
 
     // El completo italiano de la señora: lo tiras y los que están cerca se van al olor.
@@ -202,14 +224,33 @@ export default {
         ctx.next();
       } else if (S.t - S.doorMsg > 3) {
         S.doorMsg = S.t;
-        ctx.hud.subtitle('La puerta no abre. Todavía no has visto lo suficiente. [F]', 2600);
+        ctx.hud.subtitle('La puerta no abre. Todavía faltan sobrevivientes en tus fotos.', 2600);
       }
     }
   },
   exit(ctx) {
+    ctx.misiones?.set(null);
     ctx.camera.fov = FOV;
     ctx.camera.updateProjectionMatrix();
     S?.scene.dispose();
     S = null;
   },
 };
+
+// El sobreviviente más centrado en la foto (o nadie si no le apuntas a ninguno).
+function apuntado(cam, passengers) {
+  cam.getWorldDirection(_fwd);
+  let mejor = null;
+  let menor = APUNTA;
+  for (const p of passengers) {
+    if (p.gone) continue;
+    const dx = p.x - cam.position.x;
+    const dy = 1.3 - cam.position.y;
+    const dz = p.z - cam.position.z;
+    const d = Math.hypot(dx, dy, dz);
+    if (d > APUNTA_LEJOS || d < .01) continue;
+    const ang = Math.acos(THREE.MathUtils.clamp((dx * _fwd.x + dy * _fwd.y + dz * _fwd.z) / d, -1, 1));
+    if (ang < menor) { menor = ang; mejor = p; }
+  }
+  return mejor;
+}

@@ -12,10 +12,7 @@ const E = (ctx) => ctx.input.pressed('KeyE');
 const conCompleto = (ctx) => tiene(ctx, 'completo');
 
 const PASOS = {
-  horaPunta: [
-    { teclas: ['W'], texto: 'Avanza entre la gente', desde: 4.5, hecho: (ctx, s) => s.w > 1.2 },
-    { teclas: ['Mouse'], texto: 'Mira a tu alrededor', desde: 0, dura: 4 },
-  ],
+  // horaPunta: los controles de movimiento los muestra la tarjeta del inicio (states/horaPunta.js)
   losCinco: [
     { teclas: ['F'], texto: 'Saca una foto con el celular', desde: 11.5, hecho: F },
   ],

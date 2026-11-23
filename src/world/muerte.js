@@ -9,7 +9,7 @@ import { createSangre } from './sangre.js';
 // la luz del túnel entrando a ráfagas. Todo vive en ctx.stage.
 //
 //   const muertes = createMuertes(ctx);
-//   muertes.start(pasajero, i);          // i = orden (0 Escolar … 3 Vendedor)
+//   muertes.start(pasajero, i, { ultimo }); // i = quién (0 Escolar … 3 Vendedor); ultimo = ya no queda nadie
 //   const m = muertes.update(dt, cam);   // { busy, lock, zoom, x, z }
 //   muertes.yaRotas(pasajeros);          // punto de control: ventanas ya rotas
 
@@ -36,8 +36,10 @@ const DESPUES = [
   'La mochila quedó en el piso. Su calcetín con rombos sigue en tu bolsillo.',
   'El celular que tienes en la mano era de él.',
   'El completo de la señora todavía está tibio.',
-  'Quedaste solo. Cada flash los trajo. La puerta del fondo: la luz roja.',
+  'Sus chocolates quedaron desparramados en el piso.',
 ];
+// Lo que se dice después del último, sea quien sea (el orden lo eliges tú con las fotos).
+const SOLO = 'Quedaste solo. Cada foto los trajo. La puerta del fondo: la luz roja.';
 
 // La ventana más cercana (z dentro de un tramo con vidrio).
 function ventanaZ(z) {
@@ -237,11 +239,11 @@ export function createMuertes(ctx) {
   return {
     get busy() { return Boolean(cur); },
 
-    start(p, i) {
+    start(p, i, { ultimo = false } = {}) {
       if (cur) return false;
       const s = Math.sign(p.x) || 1;
       const v = VARIANTES[i % VARIANTES.length];
-      cur = { p, i, s, v, t: 0, wz: ventanaZ(p.z), golpe: 0, golpes: 0, rastroX: p.x, voz: null, lanzado: false, roto: false, fuera: false, dicho: false, pisoX: p.x, pisoZ: p.z };
+      cur = { p, i, s, v, ultimo, t: 0, wz: ventanaZ(p.z), golpe: 0, golpes: 0, rastroX: p.x, voz: null, lanzado: false, roto: false, fuera: false, dicho: false, pisoX: p.x, pisoZ: p.z };
       p.gone = true;
       soltar(p);
       killer.position.set(p.x - s * .42, 0, p.z);
@@ -390,7 +392,7 @@ export function createMuertes(ctx) {
         killer.rotation.z = 0;
         if (k > .75 && !c.dicho) {
           c.dicho = true;
-          ctx.hud.subtitle(DESPUES[c.i] || '', 3400);
+          ctx.hud.subtitle((c.ultimo ? SOLO : DESPUES[c.i]) || '', 3400);
         }
         if (k > 1.3) {
           killer.visible = false;

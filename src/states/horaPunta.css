@@ -1,0 +1,40 @@
+/* Tarjeta de controles al inicio de Hora punta (states/horaPunta.js). */
+.controles { position: absolute; left: 50%; top: 50%; transform: translate(-50%, calc(-50% + 10px)) scale(.97);
+  display: grid; justify-items: center; gap: 14px; padding: 18px 30px 16px;
+  background: linear-gradient(180deg, rgba(14,14,16,.88), rgba(6,6,8,.92));
+  border: 1px solid rgba(242,183,5,.35); border-radius: 10px;
+  box-shadow: 0 0 0 1px #000, 0 10px 40px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.05);
+  color: var(--ink); opacity: 0; pointer-events: none;
+  transition: opacity .45s ease, transform .45s cubic-bezier(.2,1.2,.4,1); }
+.controles.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.controles-titulo { font: 700 11px ui-monospace, Menlo, monospace; letter-spacing: .35em; color: var(--hint);
+  text-shadow: 0 0 8px rgba(242,183,5,.5); }
+.controles-fila { display: flex; align-items: flex-end; gap: 34px; }
+.controles-grupo { display: grid; justify-items: center; gap: 10px; }
+.controles-grupo small { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.controles-sep { width: 1px; align-self: stretch; background: linear-gradient(transparent, rgba(255,255,255,.15), transparent); }
+
+/* teclas tipo tecla real: cara clara y canto abajo */
+.wasd { display: grid; grid-template-columns: repeat(3, 34px); grid-template-rows: 34px 34px; gap: 5px; }
+.wasd kbd { display: grid; place-content: center; font: 700 15px ui-monospace, Menlo, monospace; color: #1a1a1a;
+  background: linear-gradient(180deg, #fbfbf7, #dcdcd4); border-radius: 5px; box-shadow: 0 3px 0 #85857f, 0 4px 6px rgba(0,0,0,.5);
+  transition: transform .08s, box-shadow .08s, background .08s; }
+.wasd kbd[data-k="KeyW"] { grid-column: 2; }
+.wasd kbd[data-k="KeyA"] { grid-column: 1; grid-row: 2; }
+.wasd kbd[data-k="KeyS"] { grid-column: 2; grid-row: 2; }
+.wasd kbd[data-k="KeyD"] { grid-column: 3; grid-row: 2; }
+.wasd kbd.pulso { animation: tecla-pulso 1.6s ease-in-out infinite; }
+.wasd kbd.apretada { transform: translateY(3px); box-shadow: 0 0 0 #85857f, 0 0 12px rgba(242,183,5,.8);
+  background: linear-gradient(180deg, #ffd65a, #f2b705); animation: none; }
+@keyframes tecla-pulso { 0%, 70%, 100% { transform: none; box-shadow: 0 3px 0 #85857f, 0 4px 6px rgba(0,0,0,.5); }
+  80% { transform: translateY(3px); box-shadow: 0 0 0 #85857f, 0 0 10px rgba(242,183,5,.6); } }
+
+/* mouse: se mece de lado a lado */
+.mouse { width: 40px; height: 73px; display: grid; place-content: center; }
+.mouse svg { width: 34px; height: 52px; animation: mouse-mece 2.4s ease-in-out infinite; }
+.mouse.apretada svg { filter: drop-shadow(0 0 6px rgba(242,183,5,.8)); }
+@keyframes mouse-mece { 0%, 100% { transform: translateX(-6px) rotate(-6deg); } 50% { transform: translateX(6px) rotate(6deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .wasd kbd.pulso, .mouse svg { animation: none; }
+}
