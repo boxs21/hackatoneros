@@ -53,6 +53,7 @@ export default {
     const loop = data.loop || 0;
     const solved = data.solved || [];
     const wrongStreak = data.wrongStreak || 0;
+    ctx.audio.ambiente('vagon');
     const scene = setupVagon(ctx, { z: 10.6, ambient: .5, lit: true, litColor: 0xd9f0c8, litPower: 1.3 });
 
     // los de siempre: sentados frente a las bancas, solo con flash (no son anomalía)
@@ -152,7 +153,7 @@ export default {
     if (S.stalker) {
       const ds = S.stalker.crowd.nearest(cam.position);
       scene.danger = Math.max(scene.danger, THREE.MathUtils.clamp((6 - ds) / 5, 0, 1) * .85);
-      if (ds < 6 && Math.floor(S.t * 1.4) !== Math.floor((S.t - dt) * 1.4)) ctx.audio.sfx('pasos', { cerca: ds < 3 });
+      if (ds < 6 && Math.floor(S.t * 1.4) !== Math.floor((S.t - dt) * 1.4)) ctx.audio.sfx('paso', { cerca: ds < 3 });
     }
     scene.light(level, dt, flash);
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .6;
@@ -181,7 +182,7 @@ function decide(ctx, saidAnomaly) {
     return;
   }
   S.decided = true;
-  ctx.audio.sfx('acierto');
+  ctx.audio.sfx('notificacion');
   const progress = S.progress + 1;
   const solved = S.anomaly ? [...S.solved, S.anomaly] : S.solved;
   if (progress >= GOAL) {
@@ -196,7 +197,7 @@ function decide(ctx, saidAnomaly) {
 function fail(ctx, msg) {
   S.wrongT = 0;
   S.failMsg = `${msg} Vuelves a empezar.`;
-  ctx.audio.sfx('error');
+  ctx.audio.sfx('susto');
   ctx.audio.sfx('atrapado');
   S.scare.show(null, ctx.camera);
 }

@@ -67,6 +67,7 @@ export default {
   enter(ctx, data = {}) {
     const retry = data.retry || 0;
     const code = data.code || Array.from({ length: 3 }, () => Math.floor(Math.random() * 10)).join('');
+    ctx.audio.ambiente('tunel');
     const scene = setupVagon(ctx, { z: 11.2, ambient: .35, fogFar: 13, tubeFlicker: true });
 
     const pick = data.picks || SPOTS.map(() => Math.floor(Math.random() * 5));
@@ -133,7 +134,7 @@ export default {
         if (lie) {
           S.lastLie = S.t;
           crowd.spawnBehind(ctx.camera.position, ctx.camera.rotation.y);
-          ctx.audio.sfx('respiracion', { detras: true });
+          ctx.audio.sfx('crujido', { detras: true });
         }
       },
     });
@@ -195,7 +196,7 @@ export default {
         }
       }
       if (found) {
-        ctx.audio.sfx('anotar');
+        ctx.audio.sfx('notificacion');
         ctx.hud.subtitle(`Cuaderno: ${notebook(S)}`, 3200);
         ctx.progress();
       }
@@ -239,7 +240,7 @@ export default {
     const press = ctx.input.pressed('KeyE') || S.click;
     S.click = false;
     if (press && hover >= 0 && !pad.state) {
-      ctx.audio.sfx('tecla');
+      ctx.audio.sfx('ui');
       const k = KEYS[hover];
       if (k === 'C') S.entered = '';
       else S.entered += k;
@@ -250,13 +251,13 @@ export default {
           pad.glow.color.setHex(0x5dff8a);
           pad.glow.intensity = 2;
           S.done = true;
-          ctx.audio.sfx('codigo_ok');
-          ctx.audio.sfx('puerta');
+          ctx.audio.sfx('notificacion');
+          ctx.audio.sfx('puertas');
           ctx.hud.subtitle('La puerta se abre.', 2000);
           S.leaveAt = S.t + .7;
         } else {
           pad.state = 'error';
-          ctx.audio.sfx('codigo_mal');
+          ctx.audio.sfx('susto');
           crowd.step(cam.position, .45, 12);
           crowd.show(1, 1);
           scene.light(.6, 0);

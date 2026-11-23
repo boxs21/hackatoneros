@@ -86,6 +86,14 @@ export function setupVagon(ctx, { z = 11, yaw = 0, ambient = .05, fogFar = 11, t
       spot.intensity = level * 7.5;
       fill.intensity = level * .5;
       flickLight.intensity = vagon.update(dt) * 2.2;
+      // radar: el celular vibra (sonido de Andy) mientras más cerca, más seguido
+      if (this.danger > .3) {
+        this.buzzT = (this.buzzT || 0) - dt;
+        if (this.buzzT <= 0) {
+          ctx.audio.sfx('celular', { volume: .4 + this.danger * .6 });
+          this.buzzT = 1.1 - this.danger * .6;
+        }
+      }
       overlay.u.uTime.value = time;
       if (lit) {
         for (const m of tunnelLights) {

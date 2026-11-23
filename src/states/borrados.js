@@ -27,6 +27,7 @@ export default {
   autoAdvance: true,
   enter(ctx, data = {}) {
     const retry = data.retry || 0;
+    ctx.audio.ambiente('tunel');
     const scene = setupVagon(ctx, { z: 11, ambient: .35, fogFar: 13 });
     const passengers = createPasajeros(ctx.stage);
     const crowd = createBorrados({ colliders: scene.colliders, seed: 7 });
@@ -58,7 +59,7 @@ export default {
         if (lie) {
           S.lastLie = S.t;
           crowd.spawnBehind(pos, ctx.camera.rotation.y);
-          ctx.audio.sfx('respiracion', { detras: true });
+          ctx.audio.sfx('crujido', { detras: true });
         }
         if (S.vanished < passengers.length) {
           const p = passengers[S.vanished];
@@ -139,7 +140,7 @@ export default {
         .filter(([, dist]) => dist < 5 && dist > 1.4)
         .sort((a, b) => a[1] - b[1])[0];
       S.rule = { p: ahead?.[0], left: ahead ? .9 : 0 };
-      if (ahead) ctx.audio.sfx('pasos', { cerca: true });
+      if (ahead) ctx.audio.sfx('paso', { cerca: true });
     }
     if (S.rule?.left > 0) {
       const step = dt * .75;
@@ -150,7 +151,7 @@ export default {
     if (!S.done && cam.position.z < VAGON.endDoorZ + .7) {
       if (S.vanished >= passengers.length) {
         S.done = true;
-        ctx.audio.sfx('puerta');
+        ctx.audio.sfx('puertas');
         ctx.next();
       } else if (S.t - S.doorMsg > 3) {
         S.doorMsg = S.t;

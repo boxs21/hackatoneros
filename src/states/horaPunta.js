@@ -79,7 +79,7 @@ export default {
     };
     S.flash = createFlash({
       onFire() {
-        ctx.audio.sfx('flash');
+        ctx.audio.sfx('flash', { multitud: false });
         crowd.lookAt(ctx.camera.position);
         if (!S.queue.length && S.t >= S.lineEnd) say(ctx, '¡Oiga, sin flash!', 1600);
       },
@@ -88,7 +88,7 @@ export default {
     S.titleUntil = 2.4;
     INTRO.forEach((text) => S.queue.push({ text }));
     S.queue[0].delay = 2.6;
-    ctx.audio.ambiente('vagon_andando');
+    ctx.audio.ambiente('vagon');
   },
   update(dt, ctx) {
     if (!S) return;
@@ -243,7 +243,7 @@ function nextBeat(ctx) {
     text,
     speaker: i === 1 ? S.passengers[2] : null,
     onStart: i === 0 ? () => {
-      ctx.audio.sfx('altavoz');
+      ctx.audio.sfx('pitido');
       const t = S.t + 1.6;
       S.flickerAt = [0, .08, .3, .36, .5, .56].map((d, k) => ({ t: t + d, off: k % 2 === 0 }));
     } : null,
