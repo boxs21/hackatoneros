@@ -1,10 +1,10 @@
 // HUD. Dueño final del look: Renato (celular, subtítulos, galería).
 // Los nombres de las funciones se mantienen; los estados las usan.
 //   ctx.hud.title(texto, chico)       texto grande al centro ('' para ocultar)
-//   ctx.hud.subtitle(texto, ms)       subtítulo abajo; si existe su voz, suena sola
+//   ctx.hud.subtitle(texto, ms)       subtítulo abajo; suena solo con murmullo (ui/voces.js)
 //   ctx.hud.hint(texto, ms)           pista del celular (la dispara core/help.js)
 //   await ctx.hud.elegir(['Sí', 'No'], { ms })  -> índice elegido (teclas 1–3)
-import { vozDe } from './voces.js';
+import { murmullo } from './voces.js';
 
 export function createHud(root, { audio } = {}) {
   const title = el('div', 'hud-title');
@@ -34,9 +34,9 @@ export function createHud(root, { audio } = {}) {
       clearTimeout(subTimer);
       subTimer = setTimeout(() => sub.classList.remove('on'), ms);
       callarVoz();
-      const v = audio && vozDe(text);
+      const v = audio && murmullo(text);
       if (v) {
-        try { voz = audio.voz(v.personaje, v.frase); } catch (err) { console.error('[hud] voz', err); }
+        try { voz = audio.voz(v.personaje, text, v.opts); } catch (err) { console.error('[hud] voz', err); }
       }
       return voz;
     },

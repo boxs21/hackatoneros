@@ -1,22 +1,20 @@
-// Qué subtítulos tienen voz grabada o generada en public/audio/.
-// Un subtítulo "ESCOLAR: Hola" busca voz-escolar-<slug del texto completo>.
-// Uno sin "PERSONAJE:" es del narrador (o de la multitud): voz-narrador-<slug>.
-// Los archivos se generan con: node tools/voces.mjs
-const archivos = import.meta.glob('/public/audio/voz-*.{ogg,mp3,wav,m4a}', { query: '?url', import: 'default' });
-const HAY = new Set(Object.keys(archivos).map((r) => r.split('/').pop().replace(/\.\w+$/, '').toLowerCase()));
-
-export const slug = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-  .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-
+// Voces estilo murmullo (como Undertale o Animal Crossing): cada subtítulo suena
+// con sílabas sin palabras, con el tono de quien habla. Lo genera el motor de Andy
+// (habla() en src/audio/synth.js), así que no hay archivos de voz.
+//   "ESCOLAR: Hola…"  -> tono del escolar     sin prefijo -> narrador (más bajo y suave)
 const QUIEN = { ESCOLAR: 'escolar', OFICINISTA: 'oficinista', 'SEÑORA': 'senora', VENDEDOR: 'vendedor', ALTAVOZ: 'altavoz' };
+const EXTRA = {
+  narrador: { tono: 135, volume: 0.45 },
+  altavoz: { tono: 105, volume: 0.8, radio: true },
+};
 
-export function vozDe(texto) {
+export function murmullo(texto) {
   if (!texto || texto.includes('[')) return null; // instrucciones de teclas: sin voz
-  const m = /^([A-ZÁÉÍÓÚÑ]+)[\s(:]/.exec(texto);
+  const m = /^([A-ZÁÉÍÓÚÑ]+)[^:]*:\s*/.exec(texto);
   const personaje = (m && QUIEN[m[1]]) || 'narrador';
-  if (!HAY.has(`voz-${personaje}-${slug(texto)}`)) {
-    if (import.meta.env.DEV) console.debug('[voces] sin voz:', personaje, texto);
-    return null;
-  }
-  return { personaje, frase: texto };
+  const dicho = m && QUIEN[m[1]] ? texto.slice(m[0].length) : texto;
+  const letras = dicho.replace(/\([^)]*\)/g, '').replace(/[^\p{L}\p{N}]/gu, '').length;
+  if (!letras) return null;
+  const silabas = Math.max(2, Math.min(16, Math.round(letras / 4.5)));
+  return { personaje, opts: { silabas, ...EXTRA[personaje] } };
 }

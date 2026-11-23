@@ -29,7 +29,7 @@ Textos en español de Chile. Navegador de escritorio.
   - `ctx.progress()` avisa que el jugador avanzó y reinicia el reloj de pista (30 s) y de avance automático (90 s).
   - `ctx.input.down('KeyW')`, `ctx.input.pressed('KeyF')` y `ctx.input.mouse.dx/dy`. Usa siempre códigos `e.code`.
   - `ctx.audio.*` (interfaz en `src/audio/audio.js`) y `ctx.hud.title / subtitle / hint`.
-  - **Voces:** todo `ctx.hud.subtitle(texto)` reproduce solo su voz si existe `public/audio/voz-<personaje>-<slug del texto>.mp3` ("ESCOLAR: …" → escolar; sin prefijo → narrador). No llames `ctx.audio.voz` para un subtítulo (sonaría doble). Para un texto nuevo: agrégalo en `tools/voces.mjs` y corre `node tools/voces.mjs` (necesita `.env` con `OPENAI_API_KEY`; el `.env` nunca se sube).
+  - **Voces:** son murmullos sin palabras (estilo Undertale/Animal Crossing). Todo `ctx.hud.subtitle(texto)` suena solo con el tono de quien habla ("ESCOLAR: …" → escolar; sin prefijo → narrador). No llames `ctx.audio.voz` para un subtítulo (sonaría doble).
   - **Responder:** `const i = await ctx.hud.elegir(['Opción 1', 'Opción 2'])` → índice elegido (teclas 1–3; sin respuesta en 9 s elige la última). Guarda decisiones en `ctx.memoria`.
   - **Misiones:** la lista de arriba a la derecha avanza sola con cada momento (`src/ui/misiones.js`). `ctx.misiones.set('texto')` cambia la misión actual; `set(null)` vuelve a la de base.
   - `ctx.events.on/emit` para hablar entre módulos sin importarlos.
