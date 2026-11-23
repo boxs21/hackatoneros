@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { pixelTexture } from './ps1.js';
+import { camaraFrame } from '../ui/camara.js';
 
 // El celular en la mano (abajo a la derecha). Se ve siempre, encima de todo:
 // - la pantalla muestra la cámara y el botón con la letra F
@@ -9,6 +10,10 @@ import { pixelTexture } from './ps1.js';
 //   celular vibra (idea de la radio de Silent Hill / el rastreador de Alien)
 // - a veces la foto muestra a alguien pegado a ti (idea de Fatal Frame)
 // La luz del flash sale de su LED.
+//
+// AHORA (DISENO.md): toda la pantalla es el visor de la cámara (ui/camara.js).
+// El celular 3D no se dibuja, pero sigue calculando la luz del flash y le pasa
+// su estado al visor. group.visible sigue diciendo si ya tienes el celular.
 const W = 32;
 const H = 64;
 
@@ -111,6 +116,7 @@ export function createCelular() {
     m.position.set(x, y, z);
     m.renderOrder = order;
     m.frustumCulled = false;
+    m.visible = false; // lo reemplaza el visor de cámara (ui/camara.js)
     group.add(m);
     return m;
   };
@@ -150,6 +156,8 @@ export function createCelular() {
       group.scale.setScalar(.78);
       group.updateMatrixWorld();
       led.set(.02, .06, -.01).applyMatrix4(group.matrixWorld);
+
+      if (group.visible) camaraFrame({ since, ready, hot, count, danger, lie });
 
       const tick = Math.floor(time * 16);
       const state = { white: since < .13, photo: since >= .13 && since < 1.8, ready, hot, count, danger, lie, tick };
