@@ -18,8 +18,9 @@ const HOLD = {
   chocolates: [0, 1.0, .26, 0],
 };
 
-export function createPasajeros(stage) {
-  return PASAJEROS.map((p) => {
+// sin: nombres que no aparecen (p. ej. ['Vendedor']: después del apagón ya no está vivo).
+export function createPasajeros(stage, { sin = [] } = {}) {
+  return PASAJEROS.filter((p) => !sin.includes(p.name)).map((p) => {
     const fig = createFigura(p.look);
     // Modelo 3D de Andy (Quaternius) si ya cargó; si no, queda la figura de cubos.
     const md = modelo(p.name, 1.7);
@@ -38,7 +39,7 @@ export function createPasajeros(stage) {
     // Pose del brazo izquierdo (Renato): hablar por teléfono y pasarte el celular.
     // pose.telefono / pose.dar = 0..1 (objetivo); el estado los pone y aquí se suavizan.
     const huesos = md ? buscarHuesos(md.obj) : null;
-    const celu = new THREE.Mesh(CELU_GEO, CELU_MAT);
+    const celu = crearCelu();
     celu.visible = false;
     fig.root.add(celu);
     const pose = { telefono: 0, dar: 0, t: 0, d: 0, conCelular: true };
@@ -50,8 +51,25 @@ const tmp = new THREE.Vector3();
 
 // --- Pose del brazo (Renato) ---------------------------------------------------
 // Celular en la mano del Oficinista (izquierda, como dice DISENO.md).
-const CELU_GEO = new THREE.BoxGeometry(.045, .09, .012);
-const CELU_MAT = new THREE.MeshBasicMaterial({ color: 0x9fc4ff });
+// Solo lo usa en hora punta (vagón con luz y colores claros): carcasa negra y
+// pantalla bien encendida por los dos lados, para que contraste y se vea.
+const CELU_CUERPO = new THREE.BoxGeometry(.07, .145, .012);
+const CELU_PANTALLA = new THREE.PlaneGeometry(.06, .125);
+const CELU_MAT = new THREE.MeshBasicMaterial({ color: 0x111317 });
+const CELU_LUZ = new THREE.MeshBasicMaterial({ color: 0x3f7fbf, side: THREE.DoubleSide }); // encendida pero no un foco
+function crearCelu() {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(CELU_CUERPO, CELU_MAT));
+  const pantalla = new THREE.Mesh(CELU_PANTALLA, CELU_LUZ);
+  pantalla.position.z = .0065;
+  g.add(pantalla);
+  const lente = new THREE.Mesh(new THREE.PlaneGeometry(.014, .014), new THREE.MeshBasicMaterial({ color: 0x15171b }));
+  lente.position.set(-.018, .055, -.0065);
+  lente.rotation.y = Math.PI;
+  g.add(lente);
+  g.scale.setScalar(1.35);
+  return g;
+}
 
 function buscarHuesos(obj) {
   const h = {};
@@ -72,6 +90,7 @@ const vb = new THREE.Vector3();
 const vc = new THREE.Vector3();
 const vd = new THREE.Vector3();
 const lado = new THREE.Vector3();
+const cabezaPos = new THREE.Vector3();
 const frente = new THREE.Vector3();
 const codo = new THREE.Vector3();
 const manoObj = new THREE.Vector3();
@@ -112,10 +131,10 @@ function posarBrazo(p, dt, camera) {
   h.brazo.getWorldPosition(vb);
   lado.subVectors(vb, va).setY(0).normalize(); // hacia su izquierda
   frente.set(0, 0, 1).applyQuaternion(p.root.quaternion);
-  h.cabeza.getWorldPosition(vc);
+  h.cabeza.getWorldPosition(cabezaPos);
   // al teléfono: codo abajo y afuera, mano en la oreja
   codo.copy(vb).addScaledVector(lado, .12).addScaledVector(frente, .1).y -= .2;
-  manoObj.copy(vc).addScaledVector(lado, .1).addScaledVector(frente, .03);
+  manoObj.copy(cabezaPos).addScaledVector(lado, .1).addScaledVector(frente, .03);
   // pasándote el celular: el brazo estirado hacia tu pecho
   if (ps.d > .01) {
     vd.copy(camera.position).y -= .35;
@@ -128,9 +147,17 @@ function posarBrazo(p, dt, camera) {
   apuntar(h.brazo, h.antebrazo, codo, peso);
   apuntar(h.antebrazo, h.mano, manoObj, peso);
   if (p.celu.visible) {
+    // en la mano, un poco hacia afuera para que no quede metido en la cabeza
+    // en la mano, junto a la oreja: un poco hacia afuera y arriba de la palma
+    // para que no quede metido en la cabeza ni tapado por la mano
     h.mano.getWorldPosition(va);
+    if (ps.d < .5) va.addScaledVector(lado, .035).y += .035;
     p.root.worldToLocal(p.celu.position.copy(va));
-    p.celu.lookAt(ps.d > .5 ? camera.position : vc);
+    // al teléfono: entre la cabeza y tú, para que no se vea de canto desde el frente
+    // al pasártelo te muestra la pantalla; al teléfono, la pantalla va contra la cara
+    // (girado un poco hacia ti para que se alcance a ver)
+    if (ps.d > .5) p.celu.lookAt(camera.position);
+    else p.celu.lookAt(vd.copy(cabezaPos).lerp(camera.position, .4));
   }
 }
 

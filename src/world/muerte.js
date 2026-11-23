@@ -35,7 +35,7 @@ const ULTIMAS = [
 const DESPUES = [
   'La mochila quedó en el piso. Su calcetín con rombos sigue en tu bolsillo.',
   'El celular que tienes en la mano era de él.',
-  'El completo de la señora todavía está tibio.',
+  'El completo de la señora todavía está tibio. Quedaste solo. La puerta del fondo: la luz roja.',
   'Sus chocolates quedaron desparramados en el piso.',
 ];
 // Lo que se dice después del último, sea quien sea (el orden lo eliges tú con las fotos).

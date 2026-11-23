@@ -27,11 +27,13 @@ const INTRO = [
 ];
 // Orden en que los conoces. El Oficinista va al último: le pides su celular para
 // llamar a tu mamá y, justo después, viene la catástrofe.
-const ORDEN_CHARLA = ['Escolar', 'Señora', 'Vendedor', 'Oficinista'];
+// El Vendedor no está en hora punta: lo encuentras muerto en el vagón del Escolar
+// (world/vendedorMuerto.js), con su mochila y 23 chocolates.
+const ORDEN_CHARLA = ['Escolar', 'Señora', 'Oficinista'];
 const DIALOGOS = {
   // Recortado para que la intro dure ~80 s: lo que se queda adelanta lo que viene.
   Escolar: [
-    'ESCOLAR: Disculpe… ¿este tren para en Casa? Mi mamá me dijo que contara las estaciones.',
+    'ESCOLAR: Disculpe… ¿es verdad que queda una pura pa’ Baquedano? Mi mamá me dijo que contara las estaciones.',
   ],
   Oficinista: [
     'OFICINISTA (al teléfono): Sí, jefe… mañana a primera hora se lo mando.',
@@ -48,8 +50,8 @@ const DIALOGOS = {
 // La elección queda en ctx.memoria[<pasajero>] para usarla en otras escenas.
 const RESPUESTAS = {
   Escolar: [
-    ['Sí, para en Casa. Yo también voy.', 'ESCOLAR: ¡Bacán! Entonces cuento con usted.'],
-    ['No sé, pregúntale a otro.', 'ESCOLAR: Ah… ya. Sigo contando solo no más.'],
+    ['Sí, queda una pura. Yo también me bajo ahí cerca.', 'ESCOLAR: ¡Bacán! Entonces cuento con usted.'],
+    ['Sí… queda una.', 'ESCOLAR: Ya… gracias igual.'],
   ],
   Oficinista: [
     ['Disculpe, ¿me presta el celular? Tengo que llamar a mi mamá.', 'OFICINISTA: Ya… pero rapidito, que ando con poca señal.'],
@@ -111,6 +113,7 @@ export default {
     const creados = createPasajeros(ctx.stage);
     const lugares = creados.map((p) => ({ x: p.x, z: p.z })).sort((a, b) => b.z - a.z);
     const passengers = ORDEN_CHARLA.map((n) => creados.find((p) => p.name === n)).filter(Boolean);
+    for (const p of creados) if (!ORDEN_CHARLA.includes(p.name)) p.root.visible = false; // el Vendedor no viene
     passengers.forEach((p, i) => {
       p.x = lugares[i].x;
       p.z = lugares[i].z;
@@ -121,6 +124,8 @@ export default {
     if (oficinista) oficinista.pose.telefono = 1;
     // su celular en tu mano, en 3D (ui/celular3d.js): Codex, marcar a tu mamá, sin señal
     const tel = createCelular3d(ctx.stage);
+    // tu celular, sin batería (al empezar): hasta que lo guardas no puedes caminar
+    const miCel = createCelular3d(ctx.stage, { mio: true });
     const crowd = createMultitud({
       colliders: scene.colliders,
       avoid: [
@@ -133,7 +138,7 @@ export default {
     ctx.stage.add(...crowd.meshes);
 
     S = {
-      scene, passengers, crowd, tel, t: 0,
+      scene, passengers, crowd, tel, miCel, bateriaLista: false, t: 0,
       queue: [], lineEnd: 0, speaker: null,
       beat: 0, // índice del pasajero que toca conocer (4 = final)
       talking: false,
@@ -176,7 +181,11 @@ export default {
     scene.celular.group.visible = false;
     scene.overlay.u.uVig.value = 0;
     if (!controlesVistos) S.controles = abrirControles();
-    INTRO.forEach((text) => S.queue.push({ text }));
+    INTRO.forEach((text) => S.queue.push({
+      text,
+      // «…Oh. Sin batería.»: sacas tu celular en 3D y se apaga
+      onStart: /sin bater/i.test(text) ? () => S.miCel.sinBateria(() => { S.bateriaLista = true; }) : null,
+    }));
     S.queue[0].delay = CINE + .3;
     ctx.audio.ambiente('vagon');
   },
@@ -227,6 +236,7 @@ export default {
       crowd.update(dt, cam.position);
       scene.light(0, dt, flash);
       S.tel.update(cam, dt);
+      S.miCel.update(cam, dt);
       return;
     }
 
@@ -248,7 +258,10 @@ export default {
       // momentos guiados (todos te miran, altavoz, frenazo): quieto, mirando el pasillo
       ease(cam, 0, 0, dt, 2.2);
     } else {
-      walkVagon(dt, ctx, { colliders: blockers, speed: listening ? 0 : crowdInfo.pushing ? SPEED_PUSH : SPEED_FREE, minZ: gate });
+      // quieto hasta que termina lo del celular sin batería (con un tope por si acaso)
+      if (!S.bateriaLista && S.t > CINE + 15) S.bateriaLista = true;
+      const quieto = listening || !S.bateriaLista;
+      walkVagon(dt, ctx, { colliders: blockers, speed: quieto ? 0 : crowdInfo.pushing ? SPEED_PUSH : SPEED_FREE, minZ: gate });
     }
     // destrabarse: si empujas y no avanzas, te deslizas hacia el centro del pasillo
     const pressing = ctx.input.down('KeyW') || ctx.input.down('ArrowUp');
@@ -334,6 +347,7 @@ export default {
 
     // el celular del Oficinista sigue a la cámara (al final, cuando ya se movió)
     S.tel.update(cam, dt);
+    S.miCel.update(cam, dt);
   },
   exit(ctx) {
     cerrarControles(true);

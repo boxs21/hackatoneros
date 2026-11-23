@@ -18,7 +18,8 @@ const MENSAJES = [
 ];
 import { rayado, garabato, monito } from '../world/texturas.js';
 import { setupVagon, walkVagon } from '../world/vagonEscena.js';
-import { createObjeto, borradoGeometry } from '../world/figura.js';
+import { crearVendedorMuerto } from '../world/vendedorMuerto.js';
+import { borradoGeometry } from '../world/figura.js';
 import { createScare, caughtFrame } from '../world/susto.js';
 import { VAGON } from '../world/vagon.js';
 import { createCuaderno } from '../ui/cuaderno.js';
@@ -88,11 +89,8 @@ export default {
     ctx.stage.add(crowd.mesh, scare.group);
     crowd.face(ctx.camera.position);
 
-    // la mochila del escolar al entrar
-    const mochila = createObjeto('mochila');
-    mochila.position.set(-.7, .08, 9.7);
-    mochila.rotation.set(-Math.PI / 2, 0, .4);
-    ctx.stage.add(mochila);
+    // (la mochila del escolar que estaba al entrar se sacó: ahora ahí está solo
+    // el vendedor muerto con su mochila, world/vendedorMuerto.js)
 
     // rayados de tiza: 3 con el código, el resto distractores
     const decals = [];
@@ -132,6 +130,8 @@ export default {
       intro: retry ? 99 : 0, lastLie: -99, msg: retry ? 3 : 0, msgAt: 9 };
     if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
     S.bolsillo = crearBolsillo(ctx); // regalos de la hora punta
+    // el vendedor de chocolates, muerto en el piso, con su mochila (Renato)
+    S.vendedor = crearVendedorMuerto(ctx, { x: .85, z: 9.2 });
     drawKeypad(S);
 
     // Lo que se acerca con cada pulso del tubo: silueta negra con ojos blancos.
@@ -194,6 +194,7 @@ export default {
     }
 
     walkVagon(dt, ctx, { colliders: scene.colliders });
+    S.vendedor.update(dt, ctx); // después de caminar: al abrir la mochila fija la cámara
     S.bolsillo.update(cam);
     if (!S.done && ctx.input.pressed('KeyF')) flash.fire(now);
     const level = ctx.demo && window.__fdsHold ? 1 : flash.level(now);
@@ -273,7 +274,7 @@ export default {
     const press = ctx.input.pressed('KeyE') || S.click;
     S.click = false;
     // E lejos del teclado: tirar el completo (si lo tienes)
-    if (ctx.input.pressed('KeyE') && hover < 0 && !S.done) S.bolsillo.tirar([crowd], cam);
+    if (ctx.input.pressed('KeyE') && hover < 0 && !S.done && !S.vendedor._cerca) S.bolsillo.tirar([crowd], cam);
     if (press && hover >= 0 && !pad.state) {
       ctx.audio.sfx('ui');
       const k = KEYS[hover];

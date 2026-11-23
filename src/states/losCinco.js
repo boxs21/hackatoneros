@@ -17,7 +17,7 @@ const CHARLA = [
   [1.0, 'OFICINISTA: ¿Están todos bien?'],
   [3.6, 'SEÑORA: Ay, Dios mío… no se ve nada.'],
   [6.2, 'ESCOLAR: ¿Se cortó la luz en todo el metro?'],
-  [8.8, 'VENDEDOR: Tranquilos. Esto pasa. En un rato parte.'],
+  [8.8, 'OFICINISTA: Tranquilos. Esto pasa. En un rato parte.'],
 ];
 const RECORDAR = 9; // s sin apretar F antes de recordarlo
 
@@ -31,7 +31,8 @@ export default {
   enter(ctx) {
     ctx.audio.ambiente('tunel');
     const scene = setupVagon(ctx, { z: 11, ambient: .35, fogFar: 13 });
-    const passengers = createPasajeros(ctx.stage);
+    // el Vendedor ya no está: lo encuentras muerto en el vagón siguiente (world/vendedorMuerto.js)
+    const passengers = createPasajeros(ctx.stage, { sin: ['Vendedor'] });
     mostrarRegalos(ctx);
     // el que está al fondo (solo se ve con el 2.º flash)
     const fondo = createBorrados({ seed: 4, zFrom: 20, zTo: 21, ladoTries: 0, reserve: 1, fillOutside: false });
@@ -83,14 +84,14 @@ export default {
       ctx.hud.subtitle('ESCOLAR: ¡Ahí están todos! Uf…', 2600);
     } else if (S.step === 'alivio' && desde > 3.4 && !S.pide2) {
       S.pide2 = true;
-      ctx.hud.subtitle('VENDEDOR: Saque otra, pa’ ver el fondo.', 3000);
+      ctx.hud.subtitle('OFICINISTA: Saque otra, pa’ ver el fondo.', 3000);
       ctx.misiones?.set('Saca otra foto [F]');
     } else if (S.step === 'fondo' && desde > 1.1 && !S.dijo2) {
       S.dijo2 = true;
       ctx.hud.subtitle('SEÑORA: ¿Quién está ahí atrás?', 2600);
     } else if (S.step === 'fondo' && desde > 4 && !S.pide3) {
       S.pide3 = true;
-      ctx.hud.subtitle('VENDEDOR: …Nadie se mueva. Saque otra.', 3000);
+      ctx.hud.subtitle('SEÑORA: …Nadie se mueva. Saque otra, mijo.', 3000);
       ctx.misiones?.set('Saca otra foto [F]');
     } else if (S.step === 'fin' && desde > .6 && !S.dijo3) {
       S.dijo3 = true;
@@ -102,7 +103,8 @@ export default {
     }
 
     // moverse poco: estás con ellos
-    walkVagon(dt, ctx, { speed: 1.4, minZ: 9.4, maxZ: 12.4, colliders: passengers.map((p) => ({ x: p.x, z: p.z, r: .25 })) });
+    // mientras los sobrevivientes conversan no puedes caminar (mirar sí)
+    walkVagon(dt, ctx, { speed: S.step === 'charla' ? 0 : 1.4, minZ: 9.4, maxZ: 12.4, colliders: passengers.map((p) => ({ x: p.x, z: p.z, r: .25 })) });
     updatePasajeros(passengers, dt, cam);
 
     if (!S.ended && ctx.input.pressed('KeyF') && S.step !== 'charla') flash.fire(now);

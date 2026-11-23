@@ -31,7 +31,7 @@ export default {
     const retry = data.retry || 0;
     ctx.audio.ambiente('tunel');
     const scene = setupVagon(ctx, { z: 11, ambient: .35, fogFar: 13 });
-    const passengers = createPasajeros(ctx.stage);
+    const passengers = createPasajeros(ctx.stage, { sin: ['Vendedor'] }); // el Vendedor ya no está
     const crowd = createBorrados({ colliders: scene.colliders, seed: 7 });
     const scare = createScare();
     ctx.stage.add(crowd.mesh, scare.group);

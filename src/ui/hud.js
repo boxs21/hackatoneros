@@ -7,7 +7,6 @@
 //   ctx.hud.obtenido('Celular', '[F] flash')  objeto obtenido al centro con su sprite
 import { murmullo } from './voces.js';
 import { createCamara } from './camara.js';
-import { createSinBateria } from './sinBateria.js';
 import { createObtenido } from './obtenido.js';
 
 export function createHud(root, { audio } = {}) {
@@ -19,8 +18,6 @@ export function createHud(root, { audio } = {}) {
   const item = createObtenido(root, { audio });
   // Visor de cámara a pantalla completa (DISENO.md). Las pistas entran ahí.
   const camara = createCamara(root);
-  // Tu celular sin batería (hora punta): se anima solo cuando el subtítulo lo dice.
-  const sinBateria = createSinBateria(root, { audio });
 
   let subTimer = 0;
   let voz = null;
@@ -38,7 +35,6 @@ export function createHud(root, { audio } = {}) {
     // Devuelve la voz que suena (o null), por si la escena quiere esperar su fin.
     subtitle(text, ms = 3000) {
       sub.textContent = text;
-      if (/sin bater[ií]a/i.test(text)) sinBateria.play();
       sub.classList.add('on');
       clearTimeout(subTimer);
       subTimer = setTimeout(() => sub.classList.remove('on'), ms);
@@ -97,7 +93,6 @@ export function createHud(root, { audio } = {}) {
       title.innerHTML = '';
       sub.classList.remove('on');
       camara.clear();
-      sinBateria.stop();
       cerrarEleccion?.(0);
       callarVoz();
     },

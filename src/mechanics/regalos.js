@@ -8,7 +8,7 @@ export const REGALOS = {
     nombre: 'Calcetín con rombos',
     de: 'del escolar',
     uso: 'de la suerte',
-    linea: 'ESCOLAR: Gracias por la compañía. Tome, mi calcetín con rombos, es de la suerte… ¡Calcetín con rombos maaan!',
+    linea: 'ESCOLAR: Tome, por decirme. Mi calcetín con rombos, es de la suerte… ¡Calcetín con rombos maaan!',
   },
   Oficinista: {
     id: 'celular',

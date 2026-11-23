@@ -264,7 +264,7 @@ export function createColapso(ctx, scene, { crowd } = {}) {
 
       // lo que se dice
       if (t > .4) decir(1, 'El tren frena. Aquí no hay estación.', 2400);
-      if (t > T_SUELTA + .4) decir(2, 'VENDEDOR: Le dije que no se quedara dormi—', 2000);
+      if (t > T_SUELTA + .4) decir(2, 'VENDEDOR (en la oscuridad): A luca… a luca los chocola—', 2000); // ya está muerto: su voz
       if (t > T_VIDRIOS + .5) decir(3, 'Todos te están mirando.', 1800);
 
       // el piso cede: caes, y el vagón se queda arriba

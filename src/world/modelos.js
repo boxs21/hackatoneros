@@ -28,6 +28,7 @@ export const modelosListos = Promise.all(Object.entries(ARCHIVO).map(async ([nom
     cache.set(nombre, {
       scene: gltf.scene,
       clip: gltf.animations.find((a) => IDLE.test(a.name)),
+      clips: gltf.animations,
       alto: box.max.y - box.min.y,
       base: box.min.y,
     });
@@ -37,7 +38,8 @@ export const modelosListos = Promise.all(Object.entries(ARCHIVO).map(async ([nom
 }));
 
 // Copia lista para poner en escena, parada en y=0 y de `alto` metros, con su animación de reposo.
-export function modelo(nombre, alto = 1.7) {
+// pose (opcional): otra animación por nombre (p. ej. /\|Death$/), detenida en su último cuadro.
+export function modelo(nombre, alto = 1.7, { pose = null } = {}) {
   const m = cache.get(nombre);
   if (!m || !m.alto) return null;
   const obj = clone(m.scene);
@@ -45,6 +47,17 @@ export function modelo(nombre, alto = 1.7) {
   obj.scale.multiplyScalar(s);
   obj.position.y = -m.base * s;
   let mixer = null;
+  const fija = pose && m.clips?.find((a) => pose.test(a.name));
+  if (fija) {
+    // pose quieta (Renato: el vendedor muerto en el vagón del Escolar)
+    mixer = new THREE.AnimationMixer(obj);
+    const accion = mixer.clipAction(fija);
+    accion.setLoop(THREE.LoopOnce, 1);
+    accion.clampWhenFinished = true;
+    accion.play();
+    mixer.setTime(fija.duration);
+    return { obj, mixer: null };
+  }
   if (m.clip) {
     mixer = new THREE.AnimationMixer(obj);
     const accion = mixer.clipAction(m.clip);

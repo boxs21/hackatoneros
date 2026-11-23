@@ -58,10 +58,10 @@ html, body { margin: 0; height: 100%; background: #000; color: var(--ink); overf
 .hud-obtenido small { display: block; margin-top: 2px; font-size: clamp(11px, 1.3vw, 15px); color: #f2b705; }
 
 /* Aviso de tecla según el momento: chico, abajo al centro, como parte del visor */
-.hud-tecla { position: absolute; left: 50%; bottom: 19%; transform: translate(-50%, 6px); display: flex; gap: 8px; align-items: center;
-  padding: 5px 12px; background: rgba(0,0,0,.55); border-radius: 4px; color: rgba(240,242,246,.92); white-space: nowrap;
+.hud-tecla { position: absolute; left: 3%; bottom: 30%; max-width: 30%; transform: translate(0, 6px); display: flex; gap: 8px; align-items: center;
+  padding: 5px 12px; background: rgba(0,0,0,.55); border-radius: 4px; color: rgba(240,242,246,.92); white-space: normal;
   font-size: clamp(12px, 1.5vw, 16px); text-shadow: 0 1px 2px #000; opacity: 0; transition: opacity .35s, transform .35s; pointer-events: none; }
-.hud-tecla.on { opacity: 1; transform: translate(-50%, 0); }
+.hud-tecla.on { opacity: 1; transform: translate(0, 0); } /* a la izquierda: no tapa los subtítulos (Renato) */
 .hud-tecla kbd { font: 700 .9em ui-monospace, Menlo, monospace; color: #111; background: #f2f2ee; border-radius: 3px; padding: 1px 7px;
   box-shadow: 0 2px 0 #8d8d88; }
 

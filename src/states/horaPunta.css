@@ -1,12 +1,13 @@
 /* Tarjeta de controles al inicio de Hora punta (states/horaPunta.js). */
-.controles { position: absolute; left: 50%; top: 50%; transform: translate(-50%, calc(-50% + 10px)) scale(.97);
+/* abajo a la izquierda (sobre los subtítulos no): Renato */
+.controles { position: absolute; left: 3%; bottom: 30%; transform-origin: left bottom; transform: translateY(10px) scale(.72);
   display: grid; justify-items: center; gap: 14px; padding: 18px 30px 16px;
   background: linear-gradient(180deg, rgba(14,14,16,.88), rgba(6,6,8,.92));
   border: 1px solid rgba(242,183,5,.35); border-radius: 10px;
   box-shadow: 0 0 0 1px #000, 0 10px 40px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.05);
   color: var(--ink); opacity: 0; pointer-events: none;
   transition: opacity .45s ease, transform .45s cubic-bezier(.2,1.2,.4,1); }
-.controles.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.controles.on { opacity: 1; transform: scale(.75); }
 .controles-titulo { font: 700 11px ui-monospace, Menlo, monospace; letter-spacing: .35em; color: var(--hint);
   text-shadow: 0 0 8px rgba(242,183,5,.5); }
 .controles-fila { display: flex; align-items: flex-end; gap: 34px; }

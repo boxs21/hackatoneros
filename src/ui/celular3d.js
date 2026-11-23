@@ -6,6 +6,8 @@ import * as THREE from 'three';
 //   subir()  -> lo levantas: tenía Codex abierto (logo oficial, public/codex.png)
 //   marcar() -> cierras Codex (se va hacia arriba), tecleas y «Llamando… Mamá»
 //   cortar() -> estática y «SIN SEÑAL» (se cortó con el altavoz)
+//   sinBateria(alTerminar) -> TU celular al empezar: «Mamá», tocas llamar, pila
+//     vacía en rojo, se apaga y lo guardas (createCelular3d(stage, { mio: true }))
 // states/horaPunta.js lo crea y llama update(camara, dt) al final de cada frame.
 
 const W = 72;
@@ -16,7 +18,7 @@ const TECLAS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', ''];
 const logo = new Image();
 logo.src = `${import.meta.env.BASE_URL}codex.png`;
 
-export function createCelular3d(stage) {
+export function createCelular3d(stage, { mio = false } = {}) {
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -46,7 +48,7 @@ export function createCelular3d(stage) {
   const piel = encima(new THREE.MeshBasicMaterial({ color: 0x5a4234 }), 995);
   pieza(new THREE.BoxGeometry(.085, .06, .035), piel, .006, -.085, -.012); // mano
   pieza(new THREE.BoxGeometry(.022, .06, .02), piel, -.04, -.045, .004).rotation.z = -.5; // pulgar
-  pieza(new THREE.BoxGeometry(.074, .148, .012), encima(new THREE.MeshBasicMaterial({ color: 0x3a3f48 }), 996), 0, 0, 0);
+  pieza(new THREE.BoxGeometry(.074, .148, .012), encima(new THREE.MeshBasicMaterial({ color: mio ? 0x1d2026 : 0x3a3f48 }), 996), 0, 0, 0);
   pieza(new THREE.PlaneGeometry(.064, .13), encima(new THREE.MeshBasicMaterial({ map: tex }), 997), 0, 0, .0065);
   stage.add(group);
 
@@ -56,7 +58,8 @@ export function createCelular3d(stage) {
   const tilt = new THREE.Quaternion();
   const euler = new THREE.Euler();
 
-  let modo = 'nada'; // codex | cerrar | marcar | llamando | cortado
+  let modo = 'nada'; // codex | cerrar | marcar | llamando | cortado | mama | vacia | apagado
+  let alTerminar = null;
   let t = 0; // tiempo en el modo actual
   let alto = 0; // 0 = abajo, 1 = arriba
   let meta = 0;
@@ -169,6 +172,62 @@ export function createCelular3d(stage) {
     }
   }
 
+  // tu celular: el contacto de tu mamá (en «tap» el botón verde se hunde)
+  function contactoMama(tap) {
+    g.fillStyle = '#0b0f14';
+    g.fillRect(0, 0, W, H);
+    barra();
+    g.fillStyle = '#8e7ba6';
+    g.beginPath();
+    g.arc(W / 2, 46, 14, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#fff';
+    g.font = 'bold 14px sans-serif';
+    g.textAlign = 'center';
+    g.fillText('M', W / 2, 51);
+    g.font = 'bold 11px sans-serif';
+    g.fillText('Mamá', W / 2, 82);
+    g.fillStyle = tap ? '#1a8447' : '#22a95a';
+    g.beginPath();
+    g.arc(W / 2, H - 26, tap ? 8 : 10, 0, Math.PI * 2);
+    g.fill();
+    if (tap) {
+      // el pulgar encima del botón
+      g.fillStyle = '#6b4f3e';
+      g.fillRect(W / 2 - 6, H - 30, 14, 34);
+    }
+  }
+
+  function pilaVacia() {
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, W, H);
+    if (t % .4 < .24) {
+      g.strokeStyle = '#e4322b';
+      g.lineWidth = 3;
+      g.strokeRect(18, 60, 32, 18);
+      g.fillStyle = '#e4322b';
+      g.fillRect(51, 65, 4, 8);
+      g.fillRect(22, 64, 3, 10);
+    }
+    g.fillStyle = '#e4322b';
+    g.font = 'bold 8px monospace';
+    g.textAlign = 'center';
+    g.fillText('0%', W / 2, 94);
+  }
+
+  // se apaga: la imagen se cierra a una línea blanca y queda negra
+  function apagando() {
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, W, H);
+    const k = Math.min(1, t / .3);
+    if (k < 1) {
+      g.fillStyle = '#fff';
+      const h = Math.max(1, (1 - k) * 18);
+      const w = k < .6 ? W : W * (1 - (k - .6) / .4);
+      g.fillRect((W - w) / 2, H / 2 - h / 2, w, h);
+    }
+  }
+
   function dibujar() {
     if (modo === 'codex') {
       pantallaCodex();
@@ -181,6 +240,9 @@ export function createCelular3d(stage) {
     } else if (modo === 'marcar') teclado();
     else if (modo === 'llamando') llamando();
     else if (modo === 'cortado') cortado();
+    else if (modo === 'mama') contactoMama(t > 1.1);
+    else if (modo === 'vacia') pilaVacia();
+    else if (modo === 'apagado') apagando();
     tex.needsUpdate = true;
   }
 
@@ -203,6 +265,13 @@ export function createCelular3d(stage) {
       digitos = 0;
       cambiar('cerrar');
     },
+    sinBateria(fin) {
+      group.visible = true;
+      meta = 1;
+      alTerminar = fin || null;
+      cambiar('mama');
+    },
+    get ocupado() { return modo === 'mama' || modo === 'vacia' || modo === 'apagado'; },
     cortar() {
       if (modo === 'nada') return;
       cambiar('cortado');
@@ -216,6 +285,19 @@ export function createCelular3d(stage) {
         const n = Math.min(NUMERO.length, Math.floor(t / .12));
         if (n > digitos) digitos = n;
         if (digitos >= NUMERO.length && t > NUMERO.length * .12 + .35) cambiar('llamando');
+      }
+      // tu celular sin batería: Mamá -> tocas llamar -> pila vacía -> se apaga -> lo guardas
+      if (modo === 'mama' && t > 1.4) cambiar('vacia');
+      if (modo === 'vacia' && t > 1.3) cambiar('apagado');
+      if (modo === 'apagado' && t > .5) meta = 0;
+      if (modo === 'apagado' && t > 1.1) {
+        modo = 'nada';
+        group.visible = false;
+        alto = 0;
+        const fin = alTerminar;
+        alTerminar = null;
+        fin?.();
+        return;
       }
       alto += (meta - alto) * Math.min(1, dt * 7);
       off.lerpVectors(abajo, arriba, alto);
