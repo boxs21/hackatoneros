@@ -17,28 +17,23 @@ import { setupVagon, walkVagon } from '../world/vagonEscena.js';
 
 // Textos provisorios (Renato los puede cambiar). Duración automática según largo.
 const INTRO = [
-  '18:04. Sales de la pega.',
-  'El metro va lleno, como siempre. Solo quieres llegar a Casa.',
+  '18:04. Sales de la pega. Solo quieres llegar a Casa.',
   '[W] Abrirte paso · [Mouse] Mirar',
 ];
 const DIALOGOS = {
+  // Recortado para que la intro dure ~80 s: lo que se queda adelanta lo que viene.
   Escolar: [
-    'ESCOLAR: Disculpe… ¿este tren para en Casa?',
-    'ESCOLAR: Mi mamá me dijo que no me bajara antes. Que contara las estaciones.',
+    'ESCOLAR: Disculpe… ¿este tren para en Casa? Mi mamá me dijo que contara las estaciones.',
   ],
   Oficinista: [
-    'OFICINISTA (al teléfono): Sí, jefe… No, jefe, ya salí. Voy en el metro.',
-    'OFICINISTA: Mañana a primera hora se lo mando. Sí. Sí, jefe.',
+    'OFICINISTA (al teléfono): Sí, jefe… mañana a primera hora se lo mando.',
     'OFICINISTA: ¿Aló? ¿Jefe? …Se cortó.',
   ],
   Señora: [
-    'SEÑORA: Ay, mijo, cuidado con el carro, que llevo los tomates.',
-    'SEÑORA: Todos los días lo mismo… y nadie mira a nadie.',
+    'SEÑORA: Cuidado con el carro, mijo. Todos los días lo mismo… y nadie mira a nadie.',
   ],
   Vendedor: [
-    'VENDEDOR: ¡A luca, a luca los chocolates! ¡Lleve, lleve!',
-    'VENDEDOR: Usted tiene cara de cansado. Hágame caso…',
-    'VENDEDOR: No se quede dormido en este tramo. Aquí la gente se pierde.',
+    'VENDEDOR: ¡A luca los chocolates! …No se quede dormido en este tramo. Aquí la gente se pierde.',
   ],
 };
 // Respuestas del jugador (teclas 1–2) y lo que contesta cada pasajero.
@@ -70,11 +65,11 @@ const FINAL = [
 const RECLAMOS = ['¡Permiso!', '¡Oiga, no empuje!', 'Uf…', 'Córrase pa’ dentro…', '¡Ya po!', 'Con permiso, con permiso…'];
 const MURMULLOS = ['…y llegué tarde otra vez…', '¿Alguien tiene hora?', '…mañana también, sí…', '…este tren va más lento que nunca…'];
 
-const SPEED_FREE = 1.05;
-const SPEED_PUSH = .5;
+const SPEED_FREE = 1.3;
+const SPEED_PUSH = .65;
 const TALK_RADIUS = 1.9;
 
-const lineMs = (text) => Math.max(2600, 1300 + text.length * 55);
+const lineMs = (text) => Math.max(2200, 900 + text.length * 50);
 
 let S = null;
 
@@ -208,7 +203,7 @@ export default {
       S.lastComplain = S.t;
       say(ctx, RECLAMOS[Math.floor(Math.random() * RECLAMOS.length)], 1400);
       ctx.audio.sfx('empujon');
-    } else if (quiet && S.t - S.lastMurmur > 7) {
+    } else if (quiet && S.t - S.lastMurmur > 10) {
       S.lastMurmur = S.t;
       say(ctx, MURMULLOS[Math.floor(Math.random() * MURMULLOS.length)], 2000);
     }
@@ -261,7 +256,7 @@ function responder(ctx, pasajero) {
   if (!opciones) { nextBeat(ctx); return; }
   const yo = S;
   S.choosing = true; // mientras eliges, la multitud no murmura
-  ctx.hud.elegir(opciones.map(([o]) => o)).then((i) => {
+  ctx.hud.elegir(opciones.map(([o]) => o), { ms: 6000 }).then((i) => {
     if (S !== yo) return; // se salió o reinició la escena mientras elegía
     S.choosing = false;
     ctx.memoria[pasajero.name] = i;
@@ -274,10 +269,10 @@ function nextBeat(ctx) {
   S.talking = false;
   if (S.beat < S.passengers.length) return;
   // los cuatro: silencio y TODOS TE MIRAN (inquietante, sin golpe)
-  S.queue.push({ text: '', ms: 1200 });
+  S.queue.push({ text: '', ms: 700 });
   S.queue.push({
     text: '',
-    ms: 3200,
+    ms: 2800,
     onStart: () => {
       S.crowd.stare(true);
       ctx.audio.ambiente(null, { fade: .4 });
