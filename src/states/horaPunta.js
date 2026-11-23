@@ -145,7 +145,10 @@ export default {
     S.titleUntil = 4.4;
     // Partes sin nada: el celular (y lo demás) te lo van pasando los cuatro.
     mostrarRegalos(ctx, { reiniciar: true });
+    // Antes del apagón se ve NORMAL: sin celular en la mano, sin flash y sin bordes
+    // de cámara. La cámara del celular recién aparece después del apagón (Los cinco).
     scene.celular.group.visible = false;
+    scene.overlay.u.uVig.value = 0;
     INTRO.forEach((text) => S.queue.push({ text }));
     S.queue[0].delay = CINE + .3;
     ctx.audio.ambiente('vagon');
@@ -185,6 +188,7 @@ export default {
     }
 
     // ---- cola de diálogos: una línea a la vez, completa
+    if (ctx.input.pressed('Space') || ctx.input.pressed('Enter')) skipLine(ctx);
     runQueue(ctx);
 
     // ---- moverse (lento; más lento empujando). No se puede pasar al que habla.
@@ -243,8 +247,7 @@ export default {
       cam.rotation.y += diff * Math.min(1, dt * .9);
     }
 
-    if (ctx.input.pressed('KeyF') && tiene(ctx, 'celular')) flash.fire(now);
-    scene.light(flash.level(now), dt, flash);
+    scene.light(flash.level(now), dt, flash); // sin flash en hora punta: se ve normal
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .6;
 
     // ---- conocer al pasajero que toca (en orden, por cercanía)
@@ -296,6 +299,15 @@ export default {
 function say(ctx, text, ms = lineMs(text)) {
   if (text) ctx.hud.subtitle(text, ms); // texto vacío = silencio (pausa dramática)
   S.lineEnd = S.t + ms / 1000;
+  S.curText = text;
+}
+
+// Saltar diálogo: Espacio o Enter pasan a la siguiente línea. No se saltan las
+// pausas en silencio, "todos te miran" ni el final (S.cinematic): son el susto.
+function skipLine(ctx) {
+  if (S.t < CINE || S.cinematic || !S.curText || S.t >= S.lineEnd) return;
+  S.lineEnd = S.t - .25; // la cola sigue en este mismo cuadro
+  if (!S.queue.length) ctx.hud.subtitle('', 1); // si no viene nada, cierra el subtítulo (y su voz)
 }
 
 function runQueue(ctx) {
@@ -313,6 +325,10 @@ function runQueue(ctx) {
   if (line.delay && S.t < line.delay) return;
   S.queue.shift();
   say(ctx, line.text, line.ms);
+  if (line.speaker && !S.skipTold) {
+    S.skipTold = true;
+    ctx.hud.hint('[Espacio] saltar diálogo', 4500);
+  }
   S.speaker = line.speaker || null;
   line.onStart?.();
   if (line.onEnd) S.pendingEnd = line.onEnd;
@@ -350,7 +366,6 @@ function entregar(ctx, pasajero) {
     onStart: () => {
       pasajero.armR.rotation.x = 0;
       dar(ctx, pasajero.name);
-      if (r.id === 'celular') S.scene.celular.group.visible = true;
     },
     onEnd: () => nextBeat(ctx),
   });
