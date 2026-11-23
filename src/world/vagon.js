@@ -151,8 +151,12 @@ export function createVagon({ tubeFlicker = false, lit = false } = {}) {
     box(.3, .12, .05, mats.rojo, 0, 2.4, z - e * .08);
   }
 
-  // Parpadeo opcional de un tubo (Escolar): devuelve un update.
+  // Tubo que "pulsa" (Escolar). Seguridad (DISENO.md): pulsos lentos, uno cada
+  // 1,4 a 2,4 s y de 0,22 s; nunca parpadeo rápido. update() devuelve 1 mientras está prendido.
   let flickT = 0;
+  let nextPulse = 2;
+  let pulseEnd = 0;
+  let pulsing = tubeFlicker;
   const flickTube = tubes[Math.floor(tubes.length * .35)];
   const flickMat = lambert({ color: 0x3a3a36, emissive: 0x000000 });
   if (tubeFlicker) flickTube.material = flickMat;
@@ -168,10 +172,16 @@ export function createVagon({ tubeFlicker = false, lit = false } = {}) {
     update(dt) {
       if (!tubeFlicker) return 0;
       flickT += dt;
-      const on = Math.sin(flickT * 23) > .6 && Math.sin(flickT * 1.3) > .85;
+      if (pulsing && flickT >= nextPulse) {
+        pulseEnd = flickT + .22;
+        nextPulse = flickT + 1.4 + Math.random();
+      }
+      const on = flickT < pulseEnd;
       flickMat.emissive.setHex(on ? 0xd8f0ff : 0x000000);
       return on ? 1 : 0;
     },
+    // apagar el tubo para siempre (después del susto)
+    killTube() { pulsing = false; pulseEnd = 0; },
     flickPos: flickTube.position,
   };
 }

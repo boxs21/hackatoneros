@@ -10,35 +10,32 @@
 //   te deja), así que todos los textos aparecen sí o sí.
 // - Mientras alguien habla, la cámara se gira suave hacia esa persona.
 // - Al final: altavoz con interferencia, parpadeo de luces, frenazo y apagón.
+import * as THREE from 'three';
 import { createFlash } from '../mechanics/flash.js';
 import { createMultitud } from '../mechanics/multitud.js';
+import { REGALOS, dar, mostrarRegalos, tiene } from '../mechanics/regalos.js';
 import { createPasajeros, updatePasajeros } from '../world/pasajeros.js';
 import { setupVagon, walkVagon } from '../world/vagonEscena.js';
 
 // Textos provisorios (Renato los puede cambiar). Duración automática según largo.
 const INTRO = [
-  '18:04. Sales de la pega.',
-  'El metro va lleno, como siempre. Solo quieres llegar a Casa.',
+  '18:04. Sales de la pega. Solo quieres llegar a Casa.',
   '[W] Abrirte paso · [Mouse] Mirar',
 ];
 const DIALOGOS = {
+  // Recortado para que la intro dure ~80 s: lo que se queda adelanta lo que viene.
   Escolar: [
-    'ESCOLAR: Disculpe… ¿este tren para en Casa?',
-    'ESCOLAR: Mi mamá me dijo que no me bajara antes. Que contara las estaciones.',
+    'ESCOLAR: Disculpe… ¿este tren para en Casa? Mi mamá me dijo que contara las estaciones.',
   ],
   Oficinista: [
-    'OFICINISTA (al teléfono): Sí, jefe… No, jefe, ya salí. Voy en el metro.',
-    'OFICINISTA: Mañana a primera hora se lo mando. Sí. Sí, jefe.',
+    'OFICINISTA (al teléfono): Sí, jefe… mañana a primera hora se lo mando.',
     'OFICINISTA: ¿Aló? ¿Jefe? …Se cortó.',
   ],
   Señora: [
-    'SEÑORA: Ay, mijo, cuidado con el carro, que llevo los tomates.',
-    'SEÑORA: Todos los días lo mismo… y nadie mira a nadie.',
+    'SEÑORA: Cuidado con el carro, mijo. Todos los días lo mismo… y nadie mira a nadie.',
   ],
   Vendedor: [
-    'VENDEDOR: ¡A luca, a luca los chocolates! ¡Lleve, lleve!',
-    'VENDEDOR: Usted tiene cara de cansado. Hágame caso…',
-    'VENDEDOR: No se quede dormido en este tramo. Aquí la gente se pierde.',
+    'VENDEDOR: ¡A luca los chocolates! …No se quede dormido en este tramo. Aquí la gente se pierde.',
   ],
 };
 // Respuestas del jugador (teclas 1–2) y lo que contesta cada pasajero.
@@ -67,17 +64,26 @@ const FINAL = [
   'ESCOLAR: ¡Queda una pura estación pa’ Casa!',
   'ALTAVOZ: Próxima estación… Ca… sa… —',
 ];
+// Misión en pantalla (lista de Valentín, src/ui/misiones.js): a quién ir ahora.
+const MISION = {
+  Escolar: 'Acércate al escolar del gorro azul',
+  Oficinista: 'Acércate al oficinista que habla por teléfono',
+  Señora: 'Acércate a la señora del carro de feria',
+  Vendedor: 'Acércate al vendedor de chocolates',
+};
+// Apertura de cine: puertas que se cierran y la cámara gira hacia el pasillo.
+const CINE = 3.8; // s sin control al empezar
 // Segundos desde que empieza a sonar el altavoz hasta el frenazo. El corte seco
 // llega 1,85 s después (final de hora punta + apagón), justo sobre el "Ca—".
 const FRENAZO_TRAS_ALTAVOZ = 1.5;
 const RECLAMOS = ['¡Permiso!', '¡Oiga, no empuje!', 'Uf…', 'Córrase pa’ dentro…', '¡Ya po!', 'Con permiso, con permiso…'];
 const MURMULLOS = ['…y llegué tarde otra vez…', '¿Alguien tiene hora?', '…mañana también, sí…', '…este tren va más lento que nunca…'];
 
-const SPEED_FREE = 1.05;
-const SPEED_PUSH = .5;
+const SPEED_FREE = 1.3;
+const SPEED_PUSH = .65;
 const TALK_RADIUS = 1.9;
 
-const lineMs = (text) => Math.max(2600, 1300 + text.length * 55);
+const lineMs = (text) => Math.max(2200, 900 + text.length * 50);
 
 let S = null;
 
@@ -91,7 +97,12 @@ export default {
     const passengers = createPasajeros(ctx.stage);
     const crowd = createMultitud({
       colliders: scene.colliders,
-      avoid: [{ x: 0, z: 12.2, r: .7 }, ...passengers.map((p) => ({ x: p.x, z: p.z, r: 1.0 }))],
+      avoid: [
+        { x: 0, z: 12.2, r: .7 },
+        ...passengers.map((p) => ({ x: p.x, z: p.z, r: 1.0 })),
+        // línea de visión despejada hacia la puerta que se cierra en la apertura
+        ...[[.55, 11.2], [1.1, 10.3], [1.6, 9.4], [2.0, 8.6]].map(([x, z]) => ({ x, z, r: .55 })),
+      ],
     });
     ctx.stage.add(...crowd.meshes);
 
@@ -102,6 +113,7 @@ export default {
       talking: false,
       lastComplain: -9, lastMurmur: 4, endAt: 0, ended: false, jolt: 0, flickerAt: [],
     };
+    if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
     S.flash = createFlash({
       onFire() {
         ctx.audio.sfx('flash', { multitud: false });
@@ -109,10 +121,18 @@ export default {
         if (!S.queue.length && S.t >= S.lineEnd) say(ctx, '¡Oiga, sin flash!', 1600);
       },
     });
-    ctx.hud.title('18:04', 'Hora punta');
-    S.titleUntil = 2.4;
+    // apertura: mirando la puerta lateral abierta, que se cierra; después, el pasillo
+    S.doorLeaves = scene.vagon.parts.leaves.filter((l) => l.dz === 8).map((l) => ({ ...l, z0: l.mesh.position.z }));
+    for (const l of S.doorLeaves) l.mesh.position.z = l.z0 + l.k * .6;
+    S.yawDoor = Math.atan2(-2.5, 4.2);
+    ctx.camera.rotation.y = S.yawDoor;
+    S.titleAt = 1.9;
+    S.titleUntil = 4.4;
+    // Partes sin nada: el celular (y lo demás) te lo van pasando los cuatro.
+    mostrarRegalos(ctx, { reiniciar: true });
+    scene.celular.group.visible = false;
     INTRO.forEach((text) => S.queue.push({ text }));
-    S.queue[0].delay = 2.6;
+    S.queue[0].delay = CINE + .3;
     ctx.audio.ambiente('vagon');
   },
   update(dt, ctx) {
@@ -121,6 +141,10 @@ export default {
     const cam = ctx.camera;
     const now = performance.now();
     S.t += dt;
+    if (S.titleAt && S.t > S.titleAt) {
+      S.titleAt = 0;
+      ctx.hud.title('18:04', 'Hora punta');
+    }
     if (S.titleUntil && S.t > S.titleUntil) {
       S.titleUntil = 0;
       ctx.hud.title('');
@@ -136,8 +160,6 @@ export default {
       }
       const k = S.t - S.jolt;
       cam.position.z -= dt * 1.4 * Math.max(0, 1 - k * 1.5);
-      if (k > .7 && k < .78) ctx.fader.cut();
-      if (k > .78 && k < .86) ctx.fader.clear(0);
       if (k > 1.05 && !S.ended) {
         S.ended = true;
         ctx.go(this.next, {}, { fade: false });
@@ -158,7 +180,14 @@ export default {
     // mientras habla un pasajero, escuchas (puedes mirar, no caminar)
     const listening = Boolean(S.speaker);
     const before = { x: cam.position.x, z: cam.position.z };
-    walkVagon(dt, ctx, { colliders: blockers, speed: listening ? 0 : crowdInfo.pushing ? SPEED_PUSH : SPEED_FREE, minZ: gate });
+    if (S.t < CINE) {
+      cinematicOpening(ctx, S);
+    } else if (S.cinematic) {
+      // momentos guiados (todos te miran, altavoz, frenazo): quieto, mirando el pasillo
+      ease(cam, 0, 0, dt, 2.2);
+    } else {
+      walkVagon(dt, ctx, { colliders: blockers, speed: listening ? 0 : crowdInfo.pushing ? SPEED_PUSH : SPEED_FREE, minZ: gate });
+    }
     // destrabarse: si empujas y no avanzas, te deslizas hacia el centro del pasillo
     const pressing = ctx.input.down('KeyW') || ctx.input.down('ArrowUp');
     const movedNow = Math.hypot(cam.position.x - before.x, cam.position.z - before.z);
@@ -166,8 +195,22 @@ export default {
     if (S.stuck > .6) cam.position.x += (0 - cam.position.x) * Math.min(1, dt * 1.5);
     updatePasajeros(passengers, dt, cam);
 
+    // quien empieza a hablar queda encuadrado (1 s, aunque muevas el mouse)
+    if (S.speaker && S.speaker !== S.lastSpeaker) S.lockUntil = S.t + 1;
+    S.lastSpeaker = S.speaker;
+    if (S.speaker && !S.cinematic && S.t < S.lockUntil) {
+      ease(cam, Math.atan2(-(S.speaker.x - cam.position.x), -(S.speaker.z - cam.position.z)), -.08, dt, 4);
+    }
+    // el pasajero que toca te llama con la mano
+    if (current && !S.talking && S.t > CINE) {
+      const far = Math.hypot(current.x - cam.position.x, current.z - cam.position.z) > 2.3;
+      const wave = far && S.t % 3.5 < 1.1;
+      const target = wave ? -2.7 + Math.sin(S.t * 12) * .25 : 0;
+      current.armR.rotation.x += (target - current.armR.rotation.x) * Math.min(1, dt * 8);
+    }
+    for (const p of passengers) if (p !== current || S.talking) p.armR.rotation.x *= Math.max(0, 1 - dt * 6);
     // mirar suave hacia quien habla (si el jugador no está moviendo el mouse)
-    if (S.speaker && Math.abs(ctx.input.mouse.dx) < 1) {
+    if (S.speaker && !S.cinematic && Math.abs(ctx.input.mouse.dx) < 1) {
       const dx = S.speaker.x - cam.position.x;
       const dz = S.speaker.z - cam.position.z;
       const yaw = Math.atan2(-dx, -dz);
@@ -178,12 +221,12 @@ export default {
 
     // sin nadie hablando y caminando: la vista vuelve de a poco hacia el fondo del vagón
     const walking = ctx.input.down('KeyW') || ctx.input.down('ArrowUp');
-    if (!S.speaker && walking && Math.abs(ctx.input.mouse.dx) < 1) {
+    if (!S.speaker && !S.cinematic && walking && Math.abs(ctx.input.mouse.dx) < 1) {
       const diff = Math.atan2(Math.sin(-cam.rotation.y), Math.cos(-cam.rotation.y));
       cam.rotation.y += diff * Math.min(1, dt * .9);
     }
 
-    if (ctx.input.pressed('KeyF')) flash.fire(now);
+    if (ctx.input.pressed('KeyF') && tiene(ctx, 'celular')) flash.fire(now);
     scene.light(flash.level(now), dt, flash);
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .6;
 
@@ -207,12 +250,12 @@ export default {
     }
 
     // ---- relleno: reclamos al empujar y murmullos (solo si no habla nadie)
-    const quiet = !S.queue.length && S.t > S.lineEnd + .4 && S.beat < passengers.length;
+    const quiet = !S.queue.length && !S.choosing && S.t > S.lineEnd + .4 && S.beat < passengers.length;
     if (quiet && crowdInfo.shoved && S.t - S.lastComplain > 2.2) {
       S.lastComplain = S.t;
       say(ctx, RECLAMOS[Math.floor(Math.random() * RECLAMOS.length)], 1400);
       ctx.audio.sfx('empujon');
-    } else if (quiet && S.t - S.lastMurmur > 7) {
+    } else if (quiet && S.t - S.lastMurmur > 10) {
       S.lastMurmur = S.t;
       say(ctx, MURMULLOS[Math.floor(Math.random() * MURMULLOS.length)], 2000);
     }
@@ -234,7 +277,7 @@ export default {
 };
 
 function say(ctx, text, ms = lineMs(text)) {
-  ctx.hud.subtitle(text, ms);
+  if (text) ctx.hud.subtitle(text, ms); // texto vacío = silencio (pausa dramática)
   S.lineEnd = S.t + ms / 1000;
 }
 
@@ -252,7 +295,7 @@ function runQueue(ctx) {
   }
   if (line.delay && S.t < line.delay) return;
   S.queue.shift();
-  say(ctx, line.text);
+  say(ctx, line.text, line.ms);
   S.speaker = line.speaker || null;
   line.onStart?.();
   if (line.onEnd) S.pendingEnd = line.onEnd;
@@ -264,27 +307,97 @@ function responder(ctx, pasajero) {
   const opciones = RESPUESTAS[pasajero.name];
   if (!opciones) { nextBeat(ctx); return; }
   const yo = S;
-  ctx.hud.elegir(opciones.map(([o]) => o)).then((i) => {
+  S.choosing = true; // mientras eliges, la multitud no murmura
+  ctx.hud.elegir(opciones.map(([o]) => o), { ms: 6000 }).then((i) => {
     if (S !== yo) return; // se salió o reinició la escena mientras elegía
+    S.choosing = false;
     ctx.memoria[pasajero.name] = i;
-    S.queue.push({ text: opciones[i][1], speaker: pasajero, onEnd: () => nextBeat(ctx) });
+    S.queue.push({ text: opciones[i][1], speaker: pasajero });
+    entregar(ctx, pasajero);
+  });
+}
+
+// Cada pasajero te pasa algo que después sirve (mechanics/regalos.js). Estira el brazo,
+// lo recibes y recién ahí se puede seguir.
+function entregar(ctx, pasajero) {
+  const r = REGALOS[pasajero.name];
+  if (!r) { S.queue.push({ text: '…', onEnd: () => nextBeat(ctx) }); return; }
+  S.queue.push({
+    text: r.linea,
+    speaker: pasajero,
+    onStart: () => { pasajero.armR.rotation.x = -1.25; },
+  });
+  S.queue.push({
+    text: `Recibiste: ${r.nombre.toLowerCase()} ${r.de} · ${r.uso}`,
+    ms: 2400,
+    onStart: () => {
+      pasajero.armR.rotation.x = 0;
+      dar(ctx, pasajero.name);
+      if (r.id === 'celular') S.scene.celular.group.visible = true;
+    },
+    onEnd: () => nextBeat(ctx),
   });
 }
 
 function nextBeat(ctx) {
   S.beat += 1;
   S.talking = false;
-  if (S.beat < S.passengers.length) return;
-  // los cuatro: altavoz, parpadeo, alguien pregunta… y frenazo
+  if (S.beat < S.passengers.length) {
+    ctx.misiones?.set(MISION[S.passengers[S.beat].name]);
+    return;
+  }
+  ctx.misiones?.set(null);
+  // los cuatro: silencio y TODOS TE MIRAN (inquietante, sin golpe)
+  S.queue.push({ text: '', ms: 700 });
+  S.queue.push({
+    text: '',
+    ms: 2800,
+    onStart: () => {
+      S.cinematic = true; // desde aquí hasta el apagón, la cámara se encarga
+      S.crowd.stare(true);
+      ctx.audio.ambiente(null, { fade: .4 });
+    },
+    onEnd: () => {
+      S.crowd.stare(false);
+      ctx.audio.ambiente('vagon', { fade: .2 });
+    },
+  });
+  // altavoz, parpadeo, alguien pregunta… y frenazo
   FINAL.forEach((text, i) => S.queue.push({
     text,
     speaker: i === 0 ? S.passengers.find((p) => p.name === 'Escolar') : null,
     // La campanilla y la voz del altavoz las pone el motor de audio al mostrar el subtítulo.
     onStart: i === 1 ? () => {
-      const t = S.t + 1.0;
-      S.flickerAt = [0, .08, .3, .36, .5, .56].map((d, k) => ({ t: t + d, off: k % 2 === 0 }));
+      // La campanilla la pone el motor de audio al mostrar el subtítulo del altavoz.
+      // seguridad (DISENO.md): solo 2 bajones lentos, bien separados (< 3 destellos por segundo),
+      // y caben antes del frenazo.
+      const t = S.t + .25;
+      S.flickerAt = [0, .18, .8, .98].map((d, k) => ({ t: t + d, off: k % 2 === 0 }));
       S.endAt = S.t + FRENAZO_TRAS_ALTAVOZ;
     } : null,
   }));
 }
 
+
+// Girar la cámara suave hacia (yaw, pitch).
+function ease(cam, yaw, pitch, dt, speed) {
+  const diff = Math.atan2(Math.sin(yaw - cam.rotation.y), Math.cos(yaw - cam.rotation.y));
+  cam.rotation.y += diff * Math.min(1, dt * speed);
+  cam.rotation.x += (pitch - cam.rotation.x) * Math.min(1, dt * speed);
+}
+
+// Apertura: pitido de cierre, la puerta se cierra, la cámara gira hacia el pasillo lleno.
+function cinematicOpening(ctx, S) {
+  const cam = ctx.camera;
+  const t = S.t;
+  if (!S.openSfx && t > .15) { S.openSfx = 1; ctx.audio.sfx('pitido'); }
+  if (S.openSfx === 1 && t > .9) { S.openSfx = 2; ctx.audio.sfx('puertas'); }
+  const close = THREE.MathUtils.smoothstep(t, .9, 1.7);
+  for (const l of S.doorLeaves) l.mesh.position.z = l.z0 + l.k * .6 * (1 - close);
+  const pan = THREE.MathUtils.smoothstep(t, 1.9, CINE - .2);
+  cam.rotation.set(-.02 * (1 - pan), S.yawDoor * (1 - pan), 0);
+  if (t > CINE - .05 && !S.misionSet) {
+    S.misionSet = true;
+    ctx.misiones?.set(MISION[S.passengers[0].name]);
+  }
+}

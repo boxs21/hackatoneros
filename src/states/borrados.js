@@ -6,17 +6,14 @@
 import * as THREE from 'three';
 import { createBorrados, CATCH_RADIUS } from '../mechanics/borrados.js';
 import { createFlash } from '../mechanics/flash.js';
-import { createPasajeros, desaparecer, updatePasajeros } from '../world/pasajeros.js';
+import { gastar, mostrarRegalos, tiene } from '../mechanics/regalos.js';
+import { createMuertes } from '../world/muerte.js';
+import { createPasajeros, updatePasajeros } from '../world/pasajeros.js';
 import { setupVagon, walkVagon } from '../world/vagonEscena.js';
-import { createScare } from '../world/susto.js';
+import { createScare, caughtFrame } from '../world/susto.js';
 import { VAGON } from '../world/vagon.js';
 
-const LINES = [
-  'La mochila del escolar quedó en el suelo. Él no está.',
-  'El maletín… ¿y el caballero?',
-  '¿Señora? Su carro sigue ahí.',
-  'Quedaste solo. La puerta del fondo: la luz roja.',
-];
+const FOV = 70; // el de siempre (main.js); las muertes lo cierran un rato
 
 let S = null;
 
@@ -33,14 +30,22 @@ export default {
     const crowd = createBorrados({ colliders: scene.colliders, seed: 7 });
     const scare = createScare();
     ctx.stage.add(crowd.mesh, scare.group);
+    // Cómo se los llevan (world/muerte.js) y lo que te dejaron (mechanics/regalos.js).
+    const muertes = createMuertes(ctx);
+    mostrarRegalos(ctx);
+    // El llavero del escolar: una luz chica que solo alcanza a tus pies.
+    const llavero = new THREE.PointLight(0xbfe8ff, tiene(ctx, 'llavero') ? .55 : 0, 2.6, 1.5);
+    ctx.stage.add(llavero);
     crowd.face(ctx.camera.position);
 
-    S = { scene, passengers, crowd, scare, retry, vanished: 0, t: 0, bestZ: 11,
+    S = { scene, passengers, crowd, scare, muertes, llavero, retry, vanished: 0, t: 0, bestZ: 11,
       caught: -1, done: false, doorMsg: -9, intro: retry ? 99 : 0, lastLie: -99, rule: null };
+    if (ctx.demo) window.__S = S; // depurar (solo ?demo=1)
 
     if (retry) {
       // punto de control: los cuatro ya desaparecieron
-      passengers.forEach((p) => { desaparecer(ctx.stage, p); crowd.convert(p.x, p.z); });
+      muertes.yaRotas(passengers);
+      passengers.forEach((p) => crowd.convert(p.x, p.z));
       S.vanished = passengers.length;
       crowd.face(ctx.camera.position);
       ctx.hud.subtitle(retry === 1 ? 'Otra vez. Flash, memoriza, camina a oscuras.' : 'Menos flashes. Más memoria.', 3000);
@@ -61,13 +66,12 @@ export default {
           crowd.spawnBehind(pos, ctx.camera.rotation.y);
           ctx.audio.sfx('crujido', { detras: true });
         }
-        if (S.vanished < passengers.length) {
+        // Cada flash trae a uno: lo ves agarrar al siguiente pasajero y sacarlo por la ventana.
+        if (S.vanished < passengers.length && !muertes.busy) {
           const p = passengers[S.vanished];
-          desaparecer(ctx.stage, p);
+          muertes.start(p, S.vanished);
           crowd.convert(p.x, p.z);
           crowd.face(pos);
-          ctx.audio.sfx('desaparece', { personaje: p.name });
-          ctx.hud.subtitle(LINES[S.vanished], 3200);
           S.vanished += 1;
           ctx.progress();
         }
@@ -76,7 +80,7 @@ export default {
   },
   update(dt, ctx) {
     if (!S) return;
-    const { scene, crowd, passengers, flash, scare } = S;
+    const { scene, crowd, passengers, flash, scare, muertes, llavero } = S;
     const cam = ctx.camera;
     const now = performance.now();
     S.t += dt;
@@ -84,11 +88,9 @@ export default {
     // atrapado: susto corto y reinicio instantáneo
     if (S.caught >= 0) {
       S.caught += dt;
-      scare.update(dt, cam, S.caught);
-      scene.light(S.caught < .12 ? 1 : Math.max(0, .5 - S.caught), dt);
-      scene.overlay.u.uCaught.value = Math.min(1, S.caught * 4);
+      const shown = caughtFrame(scene, scare, cam, dt, S.caught);
       scene.overlay.u.uDanger.value = 1;
-      if (S.caught > .55 && !S.done) {
+      if (shown > .55 && !S.done) {
         S.done = true;
         ctx.restart({ retry: S.retry + 1 });
       }
@@ -103,8 +105,32 @@ export default {
     }
 
     const blockers = scene.colliders.concat(passengers.filter((p) => !p.gone).map((p) => ({ x: p.x, z: p.z, r: .28 })));
-    walkVagon(dt, ctx, { colliders: blockers });
+    // mientras se llevan a alguien no puedes caminar y la vista se te va para allá
+    const muerte = muertes.update(dt, cam);
+    walkVagon(dt, ctx, { colliders: blockers, speed: muerte.lock ? 0 : 2.3 });
+    if (muerte.lock) {
+      const yaw = Math.atan2(-(muerte.x - cam.position.x), -(muerte.z - cam.position.z));
+      const diff = Math.atan2(Math.sin(yaw - cam.rotation.y), Math.cos(yaw - cam.rotation.y));
+      cam.rotation.y += diff * Math.min(1, dt * 7);
+      cam.rotation.x += (.05 - cam.rotation.x) * Math.min(1, dt * 5);
+    }
+    // y se cierra sobre lo que pasa: mientras más lejos, más zoom (no puedes no mirar)
+    const lejos = Math.hypot(muerte.x - cam.position.x, muerte.z - cam.position.z);
+    const fov = muerte.zoom ? THREE.MathUtils.clamp(FOV * 2.4 / Math.max(lejos, .1), 26, FOV) : FOV;
+    if (Math.abs(cam.fov - fov) > .05) {
+      cam.fov += (fov - cam.fov) * Math.min(1, dt * (muerte.zoom ? 6 : 9));
+      cam.updateProjectionMatrix();
+    }
     updatePasajeros(passengers, dt, cam);
+    llavero.position.set(cam.position.x, .5, cam.position.z);
+
+    // El chocolate del vendedor: lo tiras y los que están cerca retroceden a buscarlo.
+    if (!S.done && ctx.input.pressed('KeyE') && tiene(ctx, 'chocolate')) {
+      gastar(ctx, 'chocolate');
+      crowd.step(cam.position, -.6, 4);
+      ctx.audio.sfx('paso', { cerca: true });
+      ctx.hud.subtitle('Tiraste el chocolate. Algo se agacha a recogerlo.', 2600);
+    }
 
     if (!S.done && ctx.input.pressed('KeyF')) flash.fire(now);
     const level = ctx.demo && window.__fdsHold ? 1 : flash.level(now);
@@ -118,7 +144,14 @@ export default {
     scene.overlay.u.uFlash.value = Math.max(0, 1 - flash.since(now) / .14) * .75;
     scene.overlay.u.uDanger.value += (danger - scene.overlay.u.uDanger.value) * Math.min(1, dt * 8);
     if (danger > .3 && Math.floor(S.t * 1.6) !== Math.floor((S.t - dt) * 1.6)) ctx.audio.sfx('latido', { volumen: danger });
-    if (d < CATCH_RADIUS) {
+    if (d < CATCH_RADIUS && tiene(ctx, 'estampita')) {
+      // La estampita de la señora: te suelta una vez y los aleja.
+      gastar(ctx, 'estampita');
+      crowd.step(cam.position, -.9, 3);
+      scene.overlay.u.uFlash.value = .9;
+      ctx.audio.sfx('crujido');
+      ctx.hud.subtitle('Algo te agarró… y te soltó. La estampita se deshizo en tu bolsillo.', 3200);
+    } else if (d < CATCH_RADIUS) {
       S.caught = 0;
       ctx.audio.sfx('atrapado');
       scare.show(crowd.nearestPerson(cam.position), cam);
@@ -159,7 +192,9 @@ export default {
       }
     }
   },
-  exit() {
+  exit(ctx) {
+    ctx.camera.fov = FOV;
+    ctx.camera.updateProjectionMatrix();
     S?.scene.dispose();
     S = null;
   },
