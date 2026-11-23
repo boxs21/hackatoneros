@@ -29,6 +29,8 @@ jobs:
         with:
           path: dist
   deploy:
+    # Mientras el repo sea privado solo se verifica el build; al hacerlo público se publica.
+    if: ${{ github.event.repository.private == false }}
     needs: build
     runs-on: ubuntu-latest
     environment:
