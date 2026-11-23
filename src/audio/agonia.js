@@ -96,7 +96,9 @@ export function agonia(ac, out, t, { personaje = '', fase = 'agarre' } = {}) {
   const sopl = ac.createBufferSource();
   sopl.buffer = ruido(ac);
   sopl.loop = true;
-  sopl.connect(F(aire, 'highpass', 900, 0.5));
+  // el ruido pierde casi toda su energía en los formantes angostos: entra 4,5 veces más fuerte
+  // (medido offline: sin esto el jadeo y la bocanada quedaban cerca de -43 dB)
+  sopl.connect(F(G(aire, 4.5), 'highpass', 900, 0.5));
   sopl.start(t, Math.random());
   sopl.stop(t + fin + 0.1);
 
