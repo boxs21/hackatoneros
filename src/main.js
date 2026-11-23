@@ -7,6 +7,7 @@ import { createStateMachine } from './core/stateMachine.js';
 import { createHelp } from './core/help.js';
 import { setupDemo, DEMO } from './core/demo.js';
 import { createHud } from './ui/hud.js';
+import { createMisiones } from './ui/misiones.js';
 import { audio } from './audio/audio.js';
 import { STATES } from './states/index.js';
 
@@ -29,12 +30,14 @@ const ctx = {
   renderer, scene, camera, canvas, events, audio,
   input: createInput(canvas),
   fader: createFader(document.getElementById('fade')),
-  hud: createHud(document.getElementById('hud')),
+  hud: createHud(document.getElementById('hud'), { audio }),
+  memoria: {}, // decisiones del jugador que otras escenas pueden leer (ej. memoria.vendedor = 'compro')
   stage: null, // THREE.Group del estado actual (lo maneja la máquina de estados)
   demo: DEMO,
   paused: false,
 };
 
+ctx.misiones = createMisiones(document.getElementById('hud'), events);
 ctx.fsm = createStateMachine(ctx, STATES);
 
 // Cambiar de momento. Por defecto con fundido corto; { fade: false } corta seco.

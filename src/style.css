@@ -16,12 +16,35 @@ html, body { margin: 0; height: 100%; background: #000; color: var(--ink); overf
   padding: 6px 14px; background: rgba(0,0,0,.7); font-size: clamp(16px, 2.2vw, 24px); text-align: center;
   opacity: 0; transition: opacity .15s; }
 .hud-sub.on { opacity: 1; }
-.hud-hint { position: absolute; right: 3%; top: 4%; max-width: 40%; padding: 10px 14px;
+.hud-hint { position: absolute; right: 3%; top: 15%; max-width: 40%; padding: 10px 14px;
   background: #111; border: 2px solid var(--hint); border-radius: 12px; font-size: clamp(13px, 1.6vw, 18px);
   transform: translateY(-160%); transition: transform .25s cubic-bezier(.2,1.4,.4,1); }
-.hud-hint.on { transform: none; }
+.hud-hint { opacity: 0; }
+.hud-hint.on { transform: none; opacity: 1; }
 
 #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 10; }
 
 #demo-hud { position: fixed; left: 8px; bottom: 8px; z-index: 20; white-space: pre; pointer-events: none;
   font: 12px/1.4 ui-monospace, Menlo, monospace; color: #0f0; background: rgba(0,0,0,.6); padding: 4px 8px; }
+
+/* Opciones para responder: discretas, sobre el subtítulo */
+.hud-choice { position: absolute; left: 50%; bottom: 17%; transform: translateX(-50%); display: flex; flex-direction: column;
+  gap: 6px; min-width: min(420px, 70%); opacity: 0; transition: opacity .2s; pointer-events: none; }
+.hud-choice.on { opacity: 1; pointer-events: auto; }
+.hud-choice button { all: unset; cursor: pointer; display: flex; gap: 10px; align-items: center; padding: 6px 12px;
+  background: rgba(0,0,0,.62); border-left: 2px solid rgba(255,255,255,.35); font-size: clamp(14px, 1.8vw, 19px); color: #e8e8e8; }
+.hud-choice button:hover, .hud-choice button:focus-visible { border-left-color: #f2b705; color: #fff; }
+.hud-choice kbd { font: 600 .8em ui-monospace, Menlo, monospace; color: #f2b705; }
+
+/* Misiones: arriba a la derecha, chicas y semitransparentes */
+.hud-misiones { position: absolute; right: 2.5%; top: 3%; max-width: 34%; font-size: clamp(11px, 1.25vw, 14px);
+  line-height: 1.35; color: rgba(235,238,245,.82); text-shadow: 0 1px 3px #000; opacity: 0; transition: opacity .4s; }
+.hud-misiones.on { opacity: .85; }
+.hud-misiones .mis-head { font: 600 .78em ui-monospace, Menlo, monospace; letter-spacing: .12em; color: rgba(242,183,5,.85); margin-bottom: 3px; }
+.hud-misiones .mis { display: flex; gap: 7px; align-items: baseline; }
+.hud-misiones .mis i { flex: none; width: .7em; height: .7em; border: 1.5px solid currentColor; border-radius: 50%; transform: translateY(.05em); }
+.hud-misiones .mis.hecho { opacity: .5; text-decoration: line-through; display: none; }
+.hud-misiones .mis.hecho i { background: currentColor; }
+.hud-misiones.abierto .mis.hecho { display: flex; }
+.hud-misiones:not(.abierto) .mis-head { display: none; }
+.hud-misiones .mis.ahora { font-weight: 600; color: #fff; }

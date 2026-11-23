@@ -41,7 +41,29 @@ const DIALOGOS = {
     'VENDEDOR: No se quede dormido en este tramo. Aquí la gente se pierde.',
   ],
 };
+// Respuestas del jugador (teclas 1–2) y lo que contesta cada pasajero.
+// La elección queda en ctx.memoria[<pasajero>] para usarla en otras escenas.
+const RESPUESTAS = {
+  Escolar: [
+    ['Sí, para en Casa. Yo también voy.', 'ESCOLAR: ¡Bacán! Entonces cuento con usted.'],
+    ['No sé, pregúntale a otro.', 'ESCOLAR: Ah… ya. Sigo contando solo no más.'],
+  ],
+  Oficinista: [
+    ['¿Todo bien?', 'OFICINISTA: Sí, sí… es que si mañana no llego a la hora, me echan.'],
+    ['(No decir nada)', 'OFICINISTA: …Perdón. Hablo muy fuerte, ¿cierto?'],
+  ],
+  Señora: [
+    ['Yo le ayudo con el carro.', 'SEÑORA: Ay, gracias, mijo. Ya no queda gente así.'],
+    ['Permiso, voy apurado.', 'SEÑORA: Ya, ya… todos apurados.'],
+  ],
+  Vendedor: [
+    ['Ya, deme uno.', 'VENDEDOR: Buena, caserito. Guárdelo, que el viaje es largo.'],
+    ['No, gracias.', 'VENDEDOR: Usted se lo pierde… después no diga que no le ofrecí.'],
+  ],
+};
+// Ingrediente obligatorio: «Queda una pura». El Escolar venía contando las estaciones.
 const FINAL = [
+  'ESCOLAR: ¡Queda una pura estación pa’ Casa!',
   'ALTAVOZ: Próxima estación… Ca… sa… —',
   'SEÑORA: ¿Qué fue eso?',
 ];
@@ -171,8 +193,8 @@ export default {
       DIALOGOS[current.name].forEach((text, i) => S.queue.push({
         text,
         speaker: current,
-        onStart: i === 0 ? () => ctx.audio.voz(current.name, text) : null,
-        onEnd: i === DIALOGOS[current.name].length - 1 ? () => nextBeat(ctx) : null,
+        // la voz suena sola desde ctx.hud.subtitle (ui/voces.js)
+        onEnd: i === DIALOGOS[current.name].length - 1 ? () => responder(ctx, current) : null,
       }));
       ctx.progress();
     }
@@ -234,6 +256,18 @@ function runQueue(ctx) {
   ctx.progress();
 }
 
+// Después de que un pasajero habla, el jugador responde (1–2) y el pasajero contesta.
+function responder(ctx, pasajero) {
+  const opciones = RESPUESTAS[pasajero.name];
+  if (!opciones) { nextBeat(ctx); return; }
+  const yo = S;
+  ctx.hud.elegir(opciones.map(([o]) => o)).then((i) => {
+    if (S !== yo) return; // se salió o reinició la escena mientras elegía
+    ctx.memoria[pasajero.name] = i;
+    S.queue.push({ text: opciones[i][1], speaker: pasajero, onEnd: () => nextBeat(ctx) });
+  });
+}
+
 function nextBeat(ctx) {
   S.beat += 1;
   S.talking = false;
@@ -241,8 +275,8 @@ function nextBeat(ctx) {
   // los cuatro: altavoz, parpadeo, alguien pregunta… y frenazo
   FINAL.forEach((text, i) => S.queue.push({
     text,
-    speaker: i === 1 ? S.passengers[2] : null,
-    onStart: i === 0 ? () => {
+    speaker: i === 0 ? S.passengers.find((p) => p.name === 'Escolar') : i === 2 ? S.passengers.find((p) => p.name === 'Señora') : null,
+    onStart: i === 1 ? () => {
       ctx.audio.sfx('pitido');
       const t = S.t + 1.6;
       S.flickerAt = [0, .08, .3, .36, .5, .56].map((d, k) => ({ t: t + d, off: k % 2 === 0 }));
