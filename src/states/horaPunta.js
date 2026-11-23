@@ -203,7 +203,7 @@ export default {
     }
 
     // ---- relleno: reclamos al empujar y murmullos (solo si no habla nadie)
-    const quiet = !S.queue.length && S.t > S.lineEnd + .4 && S.beat < passengers.length;
+    const quiet = !S.queue.length && !S.choosing && S.t > S.lineEnd + .4 && S.beat < passengers.length;
     if (quiet && crowdInfo.shoved && S.t - S.lastComplain > 2.2) {
       S.lastComplain = S.t;
       say(ctx, RECLAMOS[Math.floor(Math.random() * RECLAMOS.length)], 1400);
@@ -260,8 +260,10 @@ function responder(ctx, pasajero) {
   const opciones = RESPUESTAS[pasajero.name];
   if (!opciones) { nextBeat(ctx); return; }
   const yo = S;
+  S.choosing = true; // mientras eliges, la multitud no murmura
   ctx.hud.elegir(opciones.map(([o]) => o)).then((i) => {
     if (S !== yo) return; // se salió o reinició la escena mientras elegía
+    S.choosing = false;
     ctx.memoria[pasajero.name] = i;
     S.queue.push({ text: opciones[i][1], speaker: pasajero, onEnd: () => nextBeat(ctx) });
   });
