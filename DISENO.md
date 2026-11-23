@@ -1,4 +1,4 @@
-# Dirección visual — Fin de Servicio
+# Dirección visual — Andén Cero
 
 Decisiones de diseño ya tomadas, con los valores exactos para implementarlas.
 Cada sección dice a quién le toca según `AGENTS.md`.

@@ -1,8 +1,7 @@
 // MENÚ DE INICIO. Dueño: Andy.
 // El menú se dibuja en un lienzo de 320x240, la misma grilla de píxeles del juego,
 // encima del vagón 3D que arma states/inicio.js. El título es el letrero LED del
-// tren (matriz de 5x7 puntos): "FIN DE SERVICIO" es lo que marca un tren que ya
-// no lleva pasajeros.
+// tren (matriz de 5x7 puntos), con el nombre del juego y la línea.
 //
 //   const menu = abrirMenu(ctx, { alComenzar, alSalir });   // en enter() del estado inicio
 //   menu.cerrar();                                          // en exit()
@@ -36,10 +35,11 @@ const F = {
 };
 const ACENTO = { '́': 6, '̃': 14 }; // tilde aguda y virgulilla, dos filas sobre la letra
 
+const TITULO = 'ANDÉN CERO'; // el nombre del juego, en el letrero LED
 const OPCIONES = [['comenzar', 'COMENZAR'], ['como', 'CÓMO SE JUEGA'], ['creditos', 'CRÉDITOS']];
 const PANELES = {
   como: ['CÓMO SE JUEGA', 'LLEGA A CASA SIN QUE TE TOQUEN.', 'WASD  MOVERSE · MOUSE  MIRAR', 'F  FOTO. VES, PERO SE ACERCAN.', 'E  USAR · ESPACIO  SALTAR', '1 2  RESPONDER · TAB  MISIONES', 'ESC  PAUSA Y MENÚ', 'MEJOR CON AUDÍFONOS.'],
-  creditos: ['CRÉDITOS', '', 'VALENTÍN CASTRO', 'CAMILO BUFADEL', 'RENATO LENIS', 'ANDY VILLARROEL', 'MÚSICA: BEFORE THE CITY WAKES', 'HECHO CON CODEX'],
+  creditos: ['CRÉDITOS', 'VALENTÍN CASTRO', 'CAMILO BUFADEL', 'RENATO LENIS', 'ANDY VILLARROEL', '', 'MÚSICA: BEFORE THE CITY WAKES', 'GENERADA CON IA (GEMINI)', '', 'HECHO CON CODEX'],
 };
 
 export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
@@ -112,17 +112,22 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
     x.fillRect(TABLERO.x, TABLERO.y, TABLERO.w, 1); x.fillRect(TABLERO.x, TABLERO.y + TABLERO.h - 1, TABLERO.w, 1);
     x.fillRect(TABLERO.x, TABLERO.y, 1, TABLERO.h); x.fillRect(TABLERO.x + TABLERO.w - 1, TABLERO.y, 1, TABLERO.h);
     x.fillStyle = AMBAR_APAGADO;
-    for (let py = TABLERO.y + 6; py < TABLERO.y + 27; py += 3) for (let px = TABLERO.x + 5; px < TABLERO.x + TABLERO.w - 5; px += 3) x.fillRect(px, py, 2, 2);
+    // Matriz apagada: 10 filas (2 para la tilde y 7 de letra, más una de aire) cada 3 píxeles.
+    for (let py = TABLERO.y + 3; py < TABLERO.y + 33; py += 3) for (let px = TABLERO.x + 5; px < TABLERO.x + TABLERO.w - 5; px += 3) x.fillRect(px, py, 2, 2);
     const p = puntos.getContext('2d');
     p.shadowColor = AMBAR; p.shadowBlur = 3;
-    texto(p, 'ANDEN CERO', centro('ANDEN CERO', 3), TABLERO.y + 6, 3, AMBAR, { led: true });
+    // El título se centra y se ajusta a la grilla de la matriz para que cada punto calce.
+    const tx = TABLERO.x + 5 + 3 * Math.round((centro(TITULO, 3) - (TABLERO.x + 5)) / 3);
+    texto(p, TITULO, tx, TABLERO.y + 9, 3, AMBAR, { led: true });
     p.shadowBlur = 0;
-    texto(p, 'LÍNEA 23 · ÚLTIMO TREN', centro('LÍNEA 23 · ÚLTIMO TREN', 1), TABLERO.y + 37, 1, AMBAR, { sombra: false });
+    texto(p, 'LÍNEA 23 · ÚLTIMO TREN', centro('LÍNEA 23 · ÚLTIMO TREN', 1), TABLERO.y + 39, 1, AMBAR, { sombra: false });
   }
 
   // --- Dibujo --------------------------------------------------------------
 
-  const cajasOpciones = OPCIONES.map((_, i) => ({ x: 14, y: 128 + i * 22 - 4, w: 200, h: 22 }));
+  // Las tres opciones del juego, grandes.
+  const lugar = (i) => ({ y: 128 + i * 22, e: 2 });
+  const cajasOpciones = OPCIONES.map((_, i) => { const { y, e } = lugar(i); return { x: 14, y: y - 4, w: 200, h: e === 2 ? 22 : 14 }; });
   const AVISO = 'ESTE JUEGO USA DESTELLOS DE LUZ REPETIDOS';
 
   function dibujar() {
@@ -140,21 +145,20 @@ export function abrirMenu(ctx, { alComenzar, alSalir } = {}) {
       return;
     }
     g.globalAlpha = Math.min(1, (reloj - entrada) / 0.6);
-    texto(g, AVISO, centro(AVISO, 1), 68, 1, GRIS);
-    texto(g, 'MÚSICA · BEFORE THE CITY WAKES', 14, 226, 1, GRIS);
+    if (!panel) texto(g, AVISO, centro(AVISO, 1), 227, 1, GRIS);
 
     if (panel) {
-      g.fillStyle = 'rgba(0, 0, 0, 0.8)'; g.fillRect(12, 92, 212, 118);
-      g.fillStyle = AMBAR; g.fillRect(12, 92, 212, 1); g.fillRect(12, 92, 1, 118);
+      g.fillStyle = 'rgba(0, 0, 0, 0.8)'; g.fillRect(12, 92, 212, 134);
+      g.fillStyle = AMBAR; g.fillRect(12, 92, 212, 1); g.fillRect(12, 92, 1, 134);
       PANELES[panel].forEach((linea, i) => texto(g, linea, 22, 102 + i * 11, 1, i === 0 ? AMBAR : TINTA));
-      texto(g, 'ESC · VOLVER', 22, 198, 1, GRIS);
+      texto(g, 'ESC · VOLVER', 22, 214, 1, GRIS);
       if (panel === 'creditos' && logoListo) g.drawImage(logo, 196, 100);
     } else {
       OPCIONES.forEach(([, nombre], i) => {
         const activa = i === sel;
-        const y = 128 + i * 22;
-        if (activa && (quieto || Math.sin(reloj * 6) > -0.4)) texto(g, '>', 16, y, 2, AMBAR);
-        texto(g, nombre, 34, y, 2, activa ? AMBAR : GRIS);
+        const { y, e } = lugar(i);
+        if (activa && (quieto || Math.sin(reloj * 6) > -0.4)) texto(g, '>', e === 2 ? 16 : 22, y, e, AMBAR);
+        texto(g, nombre, 34, y, e, activa ? AMBAR : GRIS);
       });
       if (logoListo) {
         g.drawImage(logo, W - 14 - LOGO, 196);

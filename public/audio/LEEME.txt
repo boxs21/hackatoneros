@@ -1,4 +1,4 @@
-AUDIO DE FIN DE SERVICIO (dueño: Andy)
+AUDIO DE ANDÉN CERO (dueño: Andy)
 
 Todo el sonido del juego se genera por código (src/audio/synth.js), así que
 esta carpeta puede estar vacía y el juego suena igual.
