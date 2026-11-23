@@ -26,7 +26,7 @@ export const OLEO = /* glsl */ `
 ${COMUN}
 uniform sampler2D tColor, tDepth;
 uniform vec2 uTexel;
-uniform float uRadio, uTemblor, uAspect;
+uniform float uRadio, uTemblor, uAspect, uCerca;
 uniform vec3 uNiebla;
 uniform float uNieblaAmb, uNieblaFlash, uDens, uBruma;
 vec3 comp(vec3 c) { return c / (1.0 + max3(c)); }
@@ -34,7 +34,8 @@ void main() {
   float z = linZ(texture2D(tDepth, vUv).x);
   vec2 g = vUv * vec2(uAspect, 1.0);
   // de cerca, nítido: el óleo solo pinta lo que está lejos (y el cielo entero)
-  float lejos = smoothstep(3.0, 14.0, z);
+  // uCerca: cuánta pincelada queda de cerca (0 = nítido, 1 = todo óleo)
+  float lejos = mix(uCerca, 1.0, smoothstep(3.0, 14.0, z));
   vec2 uv = vUv + (vec2(vnoise(g * 70.0), vnoise(g * 70.0 + 19.0)) - 0.5) * uTexel * uTemblor * lejos;
   float rad = uRadio * lejos;
   vec3 r;

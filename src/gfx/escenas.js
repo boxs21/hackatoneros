@@ -20,7 +20,7 @@ export function createEscenas(ctx) {
   panel.id = 'gfx-escenas';
   panel.innerHTML = `<p>Escenas</p>${ids.map((id, i) =>
     `<button type="button" data-id="${id}"><kbd>${i + 1}</kbd>${NOMBRES[id] || id}</button>`).join('')}
-    <small>Tab cerrar · [ ] anterior / siguiente · G gráficos</small>`;
+    <small>Tab cerrar · [ ] anterior / siguiente · G gráficos · V trazo</small>`;
   document.body.appendChild(panel);
 
   const abierto = () => panel.classList.contains('on');

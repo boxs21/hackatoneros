@@ -19,12 +19,18 @@ import './gfx.css';
 const PS1 = { w: 320, h: 240 };
 const ASPECT = 16 / 9;
 const NIVELES = {
-// dof: 0 en todos: el desenfoque sacaba de la escena (pedido de Andy). El código queda por si se quiere probar.
   baja: { tope: 960, msaa: 0, radio: 2.2, dof: 0, ao: 0, ssr: 0, sombra: 512 },
   media: { tope: 1440, msaa: 2, radio: 2.8, dof: 0, ao: 0, ssr: 1, sombra: 1024 },
   alta: { tope: 1920, msaa: 4, radio: 3.2, dof: 0, ao: 1, ssr: 1, sombra: 2048 },
 };
 const ORDEN = ['baja', 'media', 'alta'];
+// Trazo (tecla V): cuánto se parece a un cuadro. "mezcla" es el punto medio:
+// pincelada suave de cerca y foco de cámara leve, sin perder la escena.
+const TRAZOS = {
+  nitido: { nombre: 'nítido', cerca: 0, dof: 0, apertura: 0, blur: 0, bloom: .34, ca: .004 },
+  mezcla: { nombre: 'mezcla', cerca: .42, dof: 1, apertura: .34, blur: 3.6, bloom: .38, ca: .007 },
+  oleo: { nombre: 'óleo', cerca: .85, dof: 1, apertura: .6, blur: 5.5, bloom: .42, ca: .012 },
+};
 
 // Un color dominante por momento (como los cuadros de una misma serie).
 // niebla: color del aire · ambO/ambL: cuánto brilla a oscuras / con luz
@@ -62,7 +68,7 @@ export function createGfx(ctx) {
   const U_NIEBLA = { value: new THREE.Vector3(.05, .14, .7) };
   const texel = () => ({ value: new THREE.Vector2() });
   const U = {
-    oleo: { ...cam, tColor: { value: null }, tDepth: { value: null }, uTexel: texel(), uRadio: { value: 3 }, uTemblor: { value: 2.2 }, uAspect: { value: ASPECT }, uNiebla: U_NIEBLA, uNieblaAmb: { value: 0 }, uNieblaFlash: { value: .5 }, uDens: { value: .15 }, uBruma: { value: 0 } },
+    oleo: { ...cam, tColor: { value: null }, tDepth: { value: null }, uTexel: texel(), uRadio: { value: 3 }, uTemblor: { value: 2.2 }, uCerca: { value: .42 }, uAspect: { value: ASPECT }, uNiebla: U_NIEBLA, uNieblaAmb: { value: 0 }, uNieblaFlash: { value: .5 }, uDens: { value: .15 }, uBruma: { value: 0 } },
     ao: { ...cam, tColor: { value: null }, tDepth: { value: null }, tFoco: { value: null }, uTexel: texel(), uTan: { value: new THREE.Vector2() }, uAo: { value: .8 }, uDof: { value: 0 }, uMaxBlur: { value: 0 }, uApertura: { value: 0 }, uSsr: { value: 0 }, uCamY: { value: 1.55 }, uUp: { value: new THREE.Vector3(0, 1, 0) } },
     dof: { ...cam, tColor: { value: null }, tDepth: { value: null }, tFoco: { value: null }, uTexel: texel(), uTan: { value: new THREE.Vector2() }, uAo: { value: 0 }, uDof: { value: 1 }, uMaxBlur: { value: 5 }, uApertura: { value: .6 }, uSsr: { value: 0 }, uCamY: { value: 1.55 }, uUp: { value: new THREE.Vector3(0, 1, 0) } },
     foco: { ...cam, tDepth: { value: null }, tPrev: { value: null }, uK: { value: .1 } },
@@ -325,6 +331,22 @@ export function createGfx(ctx) {
     camera.updateProjectionMatrix();
   }
 
+  let trazo = TRAZOS[GFX.trazo];
+  function elegirTrazo(nombre) {
+    GFX.trazo = nombre;
+    trazo = TRAZOS[nombre];
+    U.oleo.uCerca.value = trazo.cerca;
+    U.dof.uApertura.value = trazo.apertura;
+    U.dof.uMaxBlur.value = trazo.blur;
+  }
+  elegirTrazo(GFX.trazo);
+  function ciclarTrazo() {
+    const lista = Object.keys(TRAZOS);
+    elegirTrazo(lista[(lista.indexOf(GFX.trazo) + 1) % lista.length]);
+    guardarGfx();
+    avisar(`Trazo: ${trazo.nombre}`);
+  }
+
   function alternar() {
     GFX.modo = GFX.on ? 'ps1' : 'pintura';
     guardarGfx();
@@ -343,6 +365,7 @@ export function createGfx(ctx) {
   addEventListener('keydown', (e) => {
     if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.code === 'KeyG') (e.shiftKey ? ciclarCalidad : alternar)();
+    if (e.code === 'KeyV' && GFX.on) ciclarTrazo();
   });
   addEventListener('resize', () => { if (GFX.on) armar(); });
 
@@ -523,7 +546,7 @@ export function createGfx(ctx) {
     U.oleo.tDepth.value = depth;
     pasada(M.oleo, R.a);
     let cuadro = R.a;
-    if (nivel.dof) {
+    if (trazo.dof && nombreNivel !== 'baja') { // el foco depende del trazo; en calidad baja se ahorra
       U.dof.tColor.value = R.a.texture;
       U.dof.tDepth.value = depth;
       U.dof.tFoco.value = R.foco[focoI].texture;
@@ -595,14 +618,14 @@ export function createGfx(ctx) {
     O.uDens.value += (pal.dens - O.uDens.value) * k;
     F.uLavado.value += ((enVagon ? pal.lavado : 0) - F.uLavado.value) * k;
     // al ser atrapado el bloom baja: la cara del susto tiene que leerse
-    F.uBloom.value = (.34 - lit * .14) * (1 - .75 * Math.min(1, overlayU?.uCaught?.value || 0));
+    F.uBloom.value = (trazo.bloom - lit * .14) * (1 - .75 * Math.min(1, overlayU?.uCaught?.value || 0));
     F.uRaya.value = .16 + (primeraVez ? Math.sin(Math.PI * abre) * .6 : 0); // el cielo se enciende con un destello
     F.uRayos.value = enVagon ? .38 + lit * .22 + Math.min(flash, 1) * .4 : 0;
     F.uExpo.value = 1.25 - lit * .15 - Math.min(flash, 1) * .5; // la cámara cierra el diafragma con el flash
     F.uVirado.value = .8 + lit * .3;
     U.brillo.uUmbral.value = .82 + lit * .25;
     F.uRetina.value = (1 - lit) * flashReciente * (GFX.calma ? .25 : .7); // solo después de un flash: girar no deja estela
-    F.uCA.value = GFX.calma ? 0 : .004;
+    F.uCA.value = GFX.calma ? 0 : trazo.ca;
     U.oleo.uTemblor.value = GFX.calma ? 0 : 2.2;
     F.uBarras.value = enVagon ? .055 : 0;
     pasada(M.final, null);
